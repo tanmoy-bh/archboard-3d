@@ -576,14 +576,14 @@ export class SceneView {
   }
 
   /**
-   * Render an animated GIF of the board. In 3D the camera makes one full turn around it; in 2D the view
-   * stays still and only the flowing dots move. The framing fits the board from every angle, selection
+   * Render an animated GIF of the board. With auto-rotate on in 3D the camera makes one full turn around it;
+   * otherwise the view stays still and only the flowing dots and the models' idle motion move. The framing fits the board from every angle, selection
    * chrome and the grid are hidden, and the canvas is handed back exactly as it was.
    */
   async exportGif(opts: { seconds: number; fps: number; width: number; onProgress?: (done: number, total: number) => void }): Promise<Blob> {
     const centre = this.groundCentre();
     if (!centre) throw new Error("There is nothing on the board to export.");
-    const turn = this.mode === "3d";
+    const turn = this.mode === "3d" && this.spin; // the board only turns when Auto is on
     const total = Math.max(2, Math.round(opts.seconds * opts.fps));
     const e = this.elev;
     const base = this.az;
