@@ -1,4 +1,4 @@
-import { DocData, EdgeData, IconKey, NODE_MIN_GAP, NodeData, emptyDoc, genId, snap } from "./types";
+import { DocData, EdgeData, IconKey, NODE_MIN_GAP, NodeData, TextData, emptyDoc, genId, snap } from "./types";
 
 export type ChangeKind = "doc" | "selection";
 export type Listener = (kind: ChangeKind) => void;
@@ -23,6 +23,7 @@ export class Store {
 
   constructor(initial: DocData = emptyDoc()) {
     this.doc = structuredClone(initial);
+    this.doc.texts ??= [];
   }
 
   subscribe(fn: Listener): () => void {
@@ -39,6 +40,10 @@ export class Store {
 
   node(id: string): NodeData | undefined { return this.doc.nodes.find((n) => n.id === id); }
   edge(id: string): EdgeData | undefined { return this.doc.edges.find((e) => e.id === id); }
+  textBox(id: string): TextData | undefined { return this.doc.texts.find((t) => t.id === id); }
+
+  /** Everything the user can put on the board: tiles, arrows and text boxes. */
+  get itemCount(): number { return this.doc.nodes.length + this.doc.edges.length + this.doc.texts.length; }
 
   // ---------------------------------------------------------------- mutation
 
@@ -106,6 +111,7 @@ export class Store {
   /** Replace the whole document (open file, new, example). Clears history. */
   load(doc: DocData): void {
     this.doc = structuredClone(doc);
+    this.doc.texts ??= []; // boards built before text boxes existed
     this.undoStack = [];
     this.redoStack = [];
     this.txBase = null;
@@ -122,7 +128,7 @@ export class Store {
   }
 
   private pruneSelection(): boolean {
-    const ids = new Set<string>([...this.doc.nodes.map((n) => n.id), ...this.doc.edges.map((e) => e.id)]);
+    const ids = new Set<string>([...this.doc.nodes.map((n) => n.id), ...this.doc.edges.map((e) => e.id), ...this.doc.texts.map((t) => t.id)]);
     let changed = false;
     for (const id of [...this.selection]) {
       if (!ids.has(id)) { this.selection.delete(id); changed = true; }
@@ -151,7 +157,7 @@ export class Store {
   }
 
   selectAll(): void {
-    this.selection = new Set(this.doc.nodes.map((n) => n.id));
+    this.selection = new Set([...this.doc.nodes.map((n) => n.id), ...this.doc.texts.map((t) => t.id)]);
     this.emit("selection");
   }
 
@@ -200,10 +206,26 @@ export class Store {
     return id;
   }
 
+  /** Add a text box centred on a grid position and select it. */
+  addText(gx: number, gy: number, text = "Text", size: TextData["size"] = "m"): string {
+    const id = genId("t");
+    this.mutate((d) => { d.texts.push({ id, gx: snap(gx), gy: snap(gy), text, size }); });
+    this.select([id]);
+    return id;
+  }
+
+  /** Remove every tile, arrow and text box. The title and step list stay. One undo step brings it all back. */
+  clearAll(): boolean {
+    if (this.itemCount === 0) return false;
+    this.mutate((d) => { d.nodes = []; d.edges = []; d.texts = []; });
+    return true;
+  }
+
   deleteSelected(): void {
     if (this.selection.size === 0) return;
     const sel = new Set(this.selection);
     this.mutate((d) => {
+      d.texts = d.texts.filter((t) => !sel.has(t.id));
       d.nodes = d.nodes.filter((n) => !sel.has(n.id));
       d.edges = d.edges.filter((e) => !sel.has(e.id) && !sel.has(e.from) && !sel.has(e.to));
     });
@@ -212,7 +234,8 @@ export class Store {
   /** Copy the selected nodes (and the edges between them) one cell down and right. */
   duplicateSelected(): void {
     const picked = this.doc.nodes.filter((n) => this.selection.has(n.id));
-    if (picked.length === 0) return;
+    const pickedTexts = this.doc.texts.filter((t) => this.selection.has(t.id));
+    if (picked.length === 0 && pickedTexts.length === 0) return;
     const map = new Map<string, string>();
     const created: string[] = [];
     this.mutate((d) => {
@@ -224,6 +247,11 @@ export class Store {
       }
       for (const e of d.edges.filter((e) => map.has(e.from) && map.has(e.to))) {
         d.edges.push({ ...e, id: genId("e"), from: map.get(e.from)!, to: map.get(e.to)! });
+      }
+      for (const t of pickedTexts) {
+        const id = genId("t");
+        created.push(id);
+        d.texts.push({ ...t, id, gx: t.gx + 1, gy: t.gy + 1 });
       }
     });
     this.select(created);

@@ -5,12 +5,13 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Store } from "../model/store";
 import type { IconKey } from "../model/types";
 import { Theme } from "../theme";
-import { ELEVATION, FRUSTUM_H, HALF, PXW, SP } from "./constants";
+import { ELEVATION, FRUSTUM_H, HALF, METRICS, PXW, SP, ViewMode, elevationOf, snapAzimuth } from "./constants";
 import { EdgeView } from "./edgeView";
 import { EdgeSpec, TileSpec, placeLabels } from "./labels";
 import { NODE_PICK_HEIGHT, NodeView } from "./nodeView";
 import { Rect, labelAnchor, routeAll } from "./routing";
 import { Ctx, TextureFactory } from "./textures";
+import { TextView } from "./textView";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -25,6 +26,7 @@ export class SceneView {
   private ctx: Ctx;
   private nodes = new Map<string, NodeView>();
   private edges = new Map<string, EdgeView>();
+  private texts = new Map<string, TextView>();
   private floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private grid: THREE.GridHelper;
   private hemi = new THREE.HemisphereLight();
@@ -33,7 +35,11 @@ export class SceneView {
   private rubber: Line2 | null = null;
   private hoverNode: string | null = null;
   private hoverEdge: string | null = null;
+  private hoverText: string | null = null;
 
+  private mode: ViewMode = "3d";
+  private elev = ELEVATION; // camera tilt above the ground, animated between the two modes
+  private elevTarget = ELEVATION;
   private az = Math.PI / 4;
   private azTarget = Math.PI / 4;
   private zoom = 1;
@@ -55,7 +61,6 @@ export class SceneView {
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400);
     this.ctx = { theme, tex: new TextureFactory(theme) };
-    this.ctx.tex.onLoad = () => { /* the loop renders every frame; nothing else to do */ };
 
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial());
     this.floor.position.y = -0.002;
@@ -88,6 +93,7 @@ export class SceneView {
     this.applyThemeColors();
     for (const n of this.nodes.values()) n.applyTheme(this.ctx);
     for (const e of this.edges.values()) e.applyTheme(this.ctx);
+    for (const t of this.texts.values()) t.applyTheme(this.ctx);
     this.ghost?.applyTheme(this.ctx);
     this.sync();
     old.dispose();
@@ -129,7 +135,7 @@ export class SceneView {
   }
 
   private updateCamera(): void {
-    const d = 120, e = ELEVATION;
+    const d = 120, e = this.elev;
     this.camera.position.set(
       this.target.x + d * Math.cos(e) * Math.sin(this.az),
       this.target.y + d * Math.sin(e),
@@ -142,6 +148,24 @@ export class SceneView {
   }
 
   // ------------------------------------------------------------ camera API
+
+  get viewMode(): ViewMode { return this.mode; }
+
+  /**
+   * Switch between the isometric 3D board (models) and the flat top-down 2D board (original glyphs).
+   * The camera tilts smoothly. The flat board is turned to a quarter turn so the grid is axis aligned,
+   * and the 3D board to a diagonal one.
+   */
+  setMode(mode: ViewMode, animate = true): void {
+    this.mode = mode;
+    this.elevTarget = elevationOf(mode);
+    this.azTarget = snapAzimuth(this.azTarget, mode); // never accumulates rotation, see snapAzimuth
+    if (!animate) { this.elev = this.elevTarget; this.az = this.azTarget; this.updateCamera(); }
+    for (const n of this.nodes.values()) n.setMode(mode);
+    this.ghost?.setMode(mode);
+    this.sync(); // label placement depends on the mode and the view angle
+    this.fit(!animate); // when animating, leave the azimuth and tilt to glide to their targets
+  }
 
   rotateView(dir: 1 | -1): void {
     this.azTarget += (dir * Math.PI) / 2;
@@ -175,28 +199,35 @@ export class SceneView {
   }
 
   /** Screen-space extent (right and up, in world units) of everything on the board, seen from azimuth `az`. */
-  private boardBounds(az: number): { minR: number; maxR: number; minU: number; maxU: number } | null {
-    const nodes = this.store.doc.nodes;
-    if (nodes.length === 0) return null;
-    const e = ELEVATION;
+  private boardBounds(az: number, e = this.elevTarget): { minR: number; maxR: number; minU: number; maxU: number } | null {
+    const { nodes, texts } = this.store.doc;
+    if (nodes.length === 0 && texts.length === 0) return null;
     const r3 = [Math.cos(az), -Math.sin(az)]; // screen-right in the ground plane (x, z)
     const up3 = [-Math.sin(e) * Math.sin(az), Math.cos(e), -Math.sin(e) * Math.cos(az)];
     let minR = Infinity, maxR = -Infinity, minU = Infinity, maxU = -Infinity;
+    const grow = (r: number, u: number) => {
+      minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+      minU = Math.min(minU, u); maxU = Math.max(maxU, u);
+    };
     for (const n of nodes) {
       for (const dx of [-HALF, HALF]) for (const dz of [-HALF, HALF]) for (const y of [0, NODE_PICK_HEIGHT]) {
         const x = n.gx * SP + dx, z = n.gy * SP + dz;
-        const r = x * r3[0] + z * r3[1];
-        const u = x * up3[0] + y * up3[1] + z * up3[2];
-        minR = Math.min(minR, r); maxR = Math.max(maxR, r);
-        minU = Math.min(minU, u); maxU = Math.max(maxU, u);
+        grow(x * r3[0] + z * r3[1], x * up3[0] + y * up3[1] + z * up3[2]);
       }
     }
-    return { minR, maxR, minU: minU - 1.4 /* labels hang under the front row */, maxU };
+    // Text boxes are screen-facing, so their extent is a rectangle around their centre in screen space.
+    for (const t of texts) {
+      const { w, h } = this.ctx.tex.textBox(t.text, t.size, !!t.boxed);
+      const x = t.gx * SP, z = t.gy * SP;
+      const r = x * r3[0] + z * r3[1], u = x * up3[0] + z * up3[2];
+      grow(r - (w * PXW) / 2, u - (h * PXW) / 2);
+      grow(r + (w * PXW) / 2, u + (h * PXW) / 2);
+    }
+    return { minR, maxR, minU: minU - (nodes.length ? 1.4 : 0) /* labels hang under the front row */, maxU };
   }
 
   /** Move the look-at point on the ground so the centre of the given bounds is at the screen centre. */
-  private centreOn(b: { minR: number; maxR: number; minU: number; maxU: number }, az: number): void {
-    const e = ELEVATION;
+  private centreOn(b: { minR: number; maxR: number; minU: number; maxU: number }, az: number, e = this.elevTarget): void {
     const r3 = [Math.cos(az), -Math.sin(az)];
     const upX = -Math.sin(e) * Math.sin(az), upZ = -Math.sin(e) * Math.cos(az);
     const rT = this.target.x * r3[0] + this.target.z * r3[1];
@@ -207,8 +238,8 @@ export class SceneView {
     this.target.z += r3[1] * dr + (fwd[1] * du) / Math.sin(e);
   }
 
-  /** Centre and zoom so the whole board is visible. */
-  fit(): void {
+  /** Centre and zoom so the whole board is visible. `snapAz` jumps straight to the target azimuth. */
+  fit(snapAz = true): void {
     const az = this.azTarget;
     const b = this.boardBounds(az);
     if (!b) {
@@ -217,7 +248,7 @@ export class SceneView {
       this.updateCamera();
       return;
     }
-    this.az = az;
+    if (snapAz) this.az = az;
     this.centreOn(b, az);
     const aspect = this.size.x / this.size.y;
     const w = b.maxR - b.minR + 4, h = b.maxU - b.minU + 4;
@@ -260,7 +291,23 @@ export class SceneView {
     return best;
   }
 
-  setHover(nodeId: string | null, edgeId: string | null): void {
+  /** The text box under the pointer, if any. Text boxes sit on top of everything else. */
+  pickText(clientX: number, clientY: number): string | null {
+    const p = this.ndc(clientX, clientY);
+    let best: string | null = null, bestD = Infinity;
+    for (const [id, v] of this.texts) {
+      const d = v.hitTest(this.camera, p.x, p.y);
+      if (d !== null && d < bestD) { best = id; bestD = d; }
+    }
+    return best;
+  }
+
+  setHover(nodeId: string | null, edgeId: string | null, textId: string | null = null): void {
+    if (textId !== this.hoverText) {
+      this.texts.get(this.hoverText ?? "")?.setHover(false);
+      this.hoverText = textId;
+      this.texts.get(textId ?? "")?.setHover(true);
+    }
     if (nodeId !== this.hoverNode) {
       this.nodes.get(this.hoverNode ?? "")?.setHover(false);
       this.hoverNode = nodeId;
@@ -283,6 +330,7 @@ export class SceneView {
     const data = { id: "ghost", gx, gy, icon, label: "" };
     if (!this.ghost) {
       this.ghost = new NodeView(data, this.ctx);
+      this.ghost.setMode(this.mode);
       this.scene.add(this.ghost.group);
     } else this.ghost.setData(data);
     this.ghost.setGhost(0.6, valid);
@@ -321,6 +369,7 @@ export class SceneView {
       if (v) v.setData(n);
       else {
         const nv = new NodeView(n, this.ctx);
+        nv.setMode(this.mode);
         this.nodes.set(n.id, nv);
         this.scene.add(nv.group);
       }
@@ -343,7 +392,7 @@ export class SceneView {
       const pill = e.label ? tex.pill(e.label, !!e.hot) : null;
       specs.push({ id: e.id, pts: route.pts, pillW: pill ? pill.w * PXW : 0, pillH: pill ? pill.h * PXW : 0, badge: !!e.step });
     }
-    const anchors = placeLabels(this.azTarget, ELEVATION, tiles, specs);
+    const anchors = placeLabels(this.azTarget, this.elevTarget, tiles, specs, METRICS[this.mode]);
     for (const e of doc.edges) {
       const route = routes.get(e.id);
       if (!route) continue;
@@ -359,6 +408,18 @@ export class SceneView {
       v.update(e, route, anchor);
     }
     for (const [id, v] of this.edges) if (!liveEdges.has(id)) { v.dispose(); this.edges.delete(id); }
+    const liveTexts = new Set<string>();
+    for (const t of doc.texts) {
+      liveTexts.add(t.id);
+      const v = this.texts.get(t.id);
+      if (v) v.setData(t);
+      else {
+        const tv = new TextView(t, this.ctx);
+        this.texts.set(t.id, tv);
+        this.scene.add(tv.group);
+      }
+    }
+    for (const [id, v] of this.texts) if (!liveTexts.has(id)) { v.dispose(); this.texts.delete(id); }
     this.syncSelection();
   }
 
@@ -366,6 +427,7 @@ export class SceneView {
     const sel = this.store.selection;
     for (const [id, v] of this.nodes) v.setSelected(sel.has(id));
     for (const [id, v] of this.edges) v.setSelected(sel.has(id));
+    for (const [id, v] of this.texts) v.setSelected(sel.has(id));
   }
 
   // ------------------------------------------------------------------- loop
@@ -376,13 +438,20 @@ export class SceneView {
     this.last = now;
     const t = now / 1000;
 
+    let moved = false;
     if (Math.abs(this.azTarget - this.az) > 1e-4) {
       this.az += (this.azTarget - this.az) * Math.min(1, dt * 9);
       if (Math.abs(this.azTarget - this.az) < 2e-3) this.az = this.azTarget;
-      this.updateCamera();
+      moved = true;
     }
-    for (const n of this.nodes.values()) n.tick(t, dt);
-    this.ghost?.tick(t, dt);
+    if (Math.abs(this.elevTarget - this.elev) > 1e-4) {
+      this.elev += (this.elevTarget - this.elev) * Math.min(1, dt * 7);
+      if (Math.abs(this.elevTarget - this.elev) < 2e-3) this.elev = this.elevTarget;
+      moved = true;
+    }
+    if (moved) this.updateCamera();
+    for (const n of this.nodes.values()) n.tick(t, dt, this.az);
+    this.ghost?.tick(t, dt, this.az);
     for (const e of this.edges.values()) e.tick(t);
     this.renderer.render(this.scene, this.camera);
   }
@@ -393,7 +462,7 @@ export class SceneView {
    * on-screen size at zoom 1, so the default is a sharp, roughly 2x image).
    */
   exportPng(pxPerUnit = 110): string {
-    const b = this.boardBounds(this.az);
+    const b = this.boardBounds(this.az, this.elev);
     if (!b) throw new Error("There is nothing on the board to export.");
     const margin = 1.6;
     const bw = b.maxR - b.minR + margin * 2, bh = b.maxU - b.minU + margin * 2;
@@ -405,6 +474,7 @@ export class SceneView {
     const chrome = (v: boolean) => {
       for (const n of this.nodes.values()) n.setChromeVisible(v);
       for (const e of this.edges.values()) e.setChromeVisible(v);
+      for (const t of this.texts.values()) t.setChromeVisible(v);
       if (this.ghost) this.ghost.group.visible = v;
       if (this.rubber) this.rubber.visible = v;
       this.grid.visible = v;
@@ -412,7 +482,7 @@ export class SceneView {
     this.exporting = true;
     try {
       chrome(false);
-      this.centreOn(b, this.az);
+      this.centreOn(b, this.az, this.elev);
       this.zoom = 1;
       this.camera.left = -bw / 2; this.camera.right = bw / 2; this.camera.top = bh / 2; this.camera.bottom = -bh / 2;
       this.updateCamera();
@@ -444,6 +514,7 @@ export class SceneView {
     this.disposers.forEach((d) => d());
     for (const n of this.nodes.values()) n.dispose();
     for (const e of this.edges.values()) e.dispose();
+    for (const t of this.texts.values()) t.dispose();
     this.ctx.tex.dispose();
     this.renderer.dispose();
     this.canvas.remove();

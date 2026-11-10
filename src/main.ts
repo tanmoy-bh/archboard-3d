@@ -3,7 +3,10 @@ import { exampleDoc } from "./example";
 import { Controller } from "./interaction/controller";
 import { parseDoc, stringifyDoc } from "./model/serialize";
 import { Store } from "./model/store";
+import { emptyDoc } from "./model/types";
+import type { ViewMode } from "./scene/constants";
 import { SceneView } from "./scene/sceneView";
+import { isUnlocked, showGate } from "./security/gate";
 import { applySavedTheme, readTheme, toggleTheme } from "./theme";
 import { h } from "./ui/dom";
 import { Inspector } from "./ui/inspector";
@@ -13,6 +16,11 @@ import { StepsPanel } from "./ui/steps";
 import { Toolbar } from "./ui/toolbar";
 
 const DOC_KEY = "archboard3d.doc";
+const MODE_KEY = "archboard3d.mode";
+
+function loadMode(): ViewMode {
+  try { return localStorage.getItem(MODE_KEY) === "2d" ? "2d" : "3d"; } catch { return "3d"; }
+}
 
 function loadInitialDoc() {
   try {
@@ -46,7 +54,7 @@ function boot(): void {
   const store = new Store(loadInitialDoc());
   const stage = h("main", { class: "stage" });
   const emptyHint = h("div", { class: "empty" }, h("strong", {}, "An empty board"), h("span", {}, "Pick a component on the left and click the floor, or load the example from the toolbar."));
-  const hints = h("div", { class: "hints" }, "Drag to pan · Wheel to zoom · Q / E rotate the view · Space + drag also pans");
+  const hints = h("div", { class: "hints" }, "Drag to pan · Wheel to zoom · Q / E rotate · T switches 2D and 3D · Space + drag also pans");
 
   let view: SceneView;
   try {
@@ -56,6 +64,9 @@ function boot(): void {
     return;
   }
 
+  let mode: ViewMode = loadMode();
+  view.setMode(mode, false);
+
   const controller = new Controller(view, store);
   const palette = new Palette(controller);
   const legend = new Legend(store);
@@ -64,12 +75,20 @@ function boot(): void {
 
   const files = {
     newBoard() {
-      if (store.doc.nodes.length > 0 && !confirm("Start a new empty board? Unsaved changes will be lost.")) return;
-      store.load({ version: 1, title: "Untitled architecture", nodes: [], edges: [], steps: [] });
+      if (store.itemCount > 0 && !confirm("Start a new empty board? Unsaved changes will be lost.")) return;
+      store.load(emptyDoc());
       view.fit();
     },
+    clearAll() {
+      const n = store.itemCount;
+      if (n === 0) { toast("The board is already empty."); return; }
+      if (!confirm(`Remove all ${n} items (components, arrows and text boxes) from the board? You can undo this with Cmd/Ctrl+Z.`)) return;
+      store.clearAll();
+      view.fit();
+      toast("Board cleared. Press Cmd/Ctrl+Z to bring it back.");
+    },
     loadExample() {
-      if (store.doc.nodes.length > 0 && !confirm("Replace the current board with the example?")) return;
+      if (store.itemCount > 0 && !confirm("Replace the current board with the example?")) return;
       store.load(exampleDoc());
       view.fit();
     },
@@ -106,6 +125,17 @@ function boot(): void {
       toggleTheme();
       applyTheme();
     },
+    setMode(next: ViewMode) {
+      if (next === mode) return;
+      mode = next;
+      try { localStorage.setItem(MODE_KEY, mode); } catch { /* ignore */ }
+      view.setMode(mode);
+      const theme = readTheme();
+      palette.build(mode, theme.fg);
+      legend.update(mode, theme.fg);
+      toolbar.refresh(theme.dark, mode);
+      toast(mode === "3d" ? "3D board: isometric view with 3D models." : "2D board: flat top-down view with 2D glyphs.");
+    },
   };
 
   const toolbar = new Toolbar(store, controller, view, files);
@@ -117,19 +147,19 @@ function boot(): void {
   function applyTheme(): void {
     const theme = readTheme();
     view.setTheme(theme);
-    palette.build(theme.fg);
-    legend.update(theme.fg);
-    toolbar.refresh(theme.dark);
+    palette.build(mode, theme.fg);
+    legend.update(mode, theme.fg);
+    toolbar.refresh(theme.dark, mode);
   }
 
   let saveTimer: number | undefined;
   const refreshAll = () => {
     const theme = readTheme();
-    toolbar.refresh(theme.dark);
+    toolbar.refresh(theme.dark, mode);
     inspector.update();
     steps.update();
-    legend.update(theme.fg);
-    emptyHint.hidden = store.doc.nodes.length > 0;
+    legend.update(mode, theme.fg);
+    emptyHint.hidden = store.itemCount > 0;
     document.title = `${store.doc.title} · Archboard 3D`;
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
@@ -137,10 +167,11 @@ function boot(): void {
     }, 400);
   };
   store.subscribe(refreshAll);
-  controller.onModeChange = () => { toolbar.refresh(readTheme().dark); palette.refresh(); };
+  controller.onModeChange = () => { toolbar.refresh(readTheme().dark, mode); palette.refresh(); };
+  controller.onToggleMode = () => files.setMode(mode === "3d" ? "2d" : "3d");
   controller.onFocusLabel = () => inspector.focusLabel();
 
-  palette.build(readTheme().fg);
+  palette.build(mode, readTheme().fg);
   refreshAll();
   view.resizeNow(); // the stage only has a size now that it is in the page
   view.fit();
@@ -154,4 +185,12 @@ function boot(): void {
   if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__archboard = { store, view, controller };
 }
 
-boot();
+/** The passphrase gate comes first: until it is passed, no board is loaded and nothing is drawn. */
+async function start(): Promise<void> {
+  applySavedTheme();
+  const app = document.getElementById("app")!;
+  if (!isUnlocked()) await showGate(app);
+  boot();
+}
+
+void start();

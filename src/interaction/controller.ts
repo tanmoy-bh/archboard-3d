@@ -1,11 +1,11 @@
 import type { Store } from "../model/store";
 import { IconKey, snap } from "../model/types";
-import { ICON_NAMES } from "../glyphs/icons";
+import { ICON_NAMES } from "../glyphs/catalog";
 import { SP } from "../scene/constants";
 import type { SceneView } from "../scene/sceneView";
 import { isTypingTarget } from "../ui/dom";
 
-export type Tool = "select" | "connect";
+export type Tool = "select" | "connect" | "text";
 
 const DRAG_THRESHOLD = 4;
 
@@ -23,10 +23,14 @@ export class Controller {
   /** Notifies the UI about tool or armed changes. */
   onModeChange: () => void = () => {};
   onFocusLabel: () => void = () => {};
+  /** Called when the user presses T to switch between the 3D and 2D board. */
+  onToggleMode: () => void = () => {};
 
   private drag: Drag = { kind: "none" };
   private connectFrom: string | null = null;
   private spaceDown = false;
+  /** A new text box was just placed: move the keyboard focus to its text field once the click is over. */
+  private focusOnUp = false;
   private last = { x: 0, y: 0 };
 
   constructor(private view: SceneView, private store: Store) {
@@ -77,6 +81,7 @@ export class Controller {
     if (this.drag.kind === "pan") c.style.cursor = "grabbing";
     else if (this.armed) c.style.cursor = "copy";
     else if (this.tool === "connect") c.style.cursor = hover ? "crosshair" : "default";
+    else if (this.tool === "text") c.style.cursor = "text";
     else c.style.cursor = hover ? "pointer" : "grab";
   }
 
@@ -101,6 +106,17 @@ export class Controller {
       return;
     }
 
+    // text tool: a click on the floor drops a text box there
+    if (this.tool === "text") {
+      const g = this.view.groundPoint(e.clientX, e.clientY);
+      if (g) {
+        this.store.addText(g.x / SP, g.z / SP);
+        this.focusOnUp = true;
+      }
+      if (!e.shiftKey) this.setTool("select");
+      return;
+    }
+
     const nodeId = this.view.pickNode(e.clientX, e.clientY);
 
     if (this.tool === "connect") {
@@ -114,13 +130,14 @@ export class Controller {
       return;
     }
 
-    // select tool
-    if (nodeId) {
-      if (e.shiftKey) this.store.toggleSelect(nodeId);
-      else if (!this.store.selection.has(nodeId)) this.store.select([nodeId]);
+    // select tool: text boxes are drawn on top, so they are picked first
+    const itemId = this.view.pickText(e.clientX, e.clientY) ?? nodeId;
+    if (itemId) {
+      if (e.shiftKey) this.store.toggleSelect(itemId);
+      else if (!this.store.selection.has(itemId)) this.store.select([itemId]);
       const g = this.view.groundPoint(e.clientX, e.clientY);
       const origins = new Map<string, { gx: number; gy: number }>();
-      for (const n of this.store.doc.nodes) if (this.store.selection.has(n.id)) origins.set(n.id, { gx: n.gx, gy: n.gy });
+      for (const n of [...this.store.doc.nodes, ...this.store.doc.texts]) if (this.store.selection.has(n.id)) origins.set(n.id, { gx: n.gx, gy: n.gy });
       if (g && origins.size > 0) {
         this.drag = { kind: "nodes", startGX: g.x / SP, startGZ: g.z / SP, origins, moved: false, x: e.clientX, y: e.clientY };
       }
@@ -165,10 +182,11 @@ export class Controller {
       return;
     }
 
-    const nodeId = this.view.pickNode(e.clientX, e.clientY);
-    const edgeId = nodeId ? null : this.view.pickEdge(e.clientX, e.clientY);
-    this.view.setHover(nodeId, edgeId);
-    this.updateCursor(!!(nodeId || edgeId));
+    const textId = this.tool === "select" ? this.view.pickText(e.clientX, e.clientY) : null;
+    const nodeId = textId ? null : this.view.pickNode(e.clientX, e.clientY);
+    const edgeId = nodeId || textId ? null : this.view.pickEdge(e.clientX, e.clientY);
+    this.view.setHover(nodeId, edgeId, textId);
+    this.updateCursor(!!(nodeId || edgeId || textId));
 
     if (this.connectFrom) {
       const from = this.store.node(this.connectFrom);
@@ -183,10 +201,11 @@ export class Controller {
     const dgx = snap(g.x / SP - d.startGX), dgy = snap(g.z / SP - d.startGZ);
     const ids = new Set(d.origins.keys());
     for (const [id, o] of d.origins) {
-      if (!this.store.isFree(o.gx + dgx, o.gy + dgy, ids)) return; // blocked: keep the last valid position
+      // tiles must keep a gap from each other; text boxes may sit anywhere
+      if (this.store.node(id) && !this.store.isFree(o.gx + dgx, o.gy + dgy, ids)) return; // blocked: keep the last valid position
     }
     this.store.transient((doc) => {
-      for (const n of doc.nodes) {
+      for (const n of [...doc.nodes, ...doc.texts]) {
         const o = d.origins.get(n.id);
         if (o) { n.gx = o.gx + dgx; n.gy = o.gy + dgy; }
       }
@@ -201,7 +220,7 @@ export class Controller {
     if (d.kind === "nodes") {
       if (d.moved) this.store.endTransient(true);
       else if (!e.shiftKey && this.store.selection.size > 1) {
-        const id = this.view.pickNode(e.clientX, e.clientY);
+        const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY);
         if (id) this.store.select([id]); // click without dragging inside a multi selection narrows it
       }
     } else if (d.kind === "pan" && !d.moved && d.clearOnClick) {
@@ -216,6 +235,10 @@ export class Controller {
         this.store.addEdge(this.connectFrom, target);
         this.cancelConnect();
       }
+    }
+    if (this.focusOnUp) {
+      this.focusOnUp = false;
+      this.onFocusLabel();
     }
     this.updateCursor(false);
   };
@@ -233,7 +256,7 @@ export class Controller {
 
   private onDouble = (e: MouseEvent): void => {
     if (this.tool !== "select") return;
-    const id = this.view.pickNode(e.clientX, e.clientY);
+    const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY);
     if (id) { this.store.select([id]); this.onFocusLabel(); return; }
     const edge = this.view.pickEdge(e.clientX, e.clientY);
     if (edge) { this.store.select([edge]); this.onFocusLabel(); }
@@ -297,9 +320,11 @@ export class Controller {
     switch (key) {
       case "v": this.setTool("select"); break;
       case "c": this.setTool("connect"); break;
+      case "x": this.setTool("text"); break;
       case "q": this.view.rotateView(-1); break;
       case "e": this.view.rotateView(1); break;
       case "f": this.view.fit(); break;
+      case "t": this.onToggleMode(); break;
       case "=": case "+": this.view.zoomCentered(1.2); break;
       case "-": case "_": this.view.zoomCentered(1 / 1.2); break;
       case "delete": case "backspace": e.preventDefault(); this.store.deleteSelected(); break;
@@ -319,11 +344,12 @@ export class Controller {
     const dx = key === "arrowleft" ? -step : key === "arrowright" ? step : 0;
     const dy = key === "arrowup" ? -step : key === "arrowdown" ? step : 0;
     const ids = new Set(this.store.selection);
-    const moving = this.store.doc.nodes.filter((n) => ids.has(n.id));
-    if (moving.length === 0) return;
-    if (!moving.every((n) => this.store.isFree(n.gx + dx, n.gy + dy, ids))) return;
+    const movingNodes = this.store.doc.nodes.filter((n) => ids.has(n.id));
+    const movingTexts = this.store.doc.texts.filter((t) => ids.has(t.id));
+    if (movingNodes.length === 0 && movingTexts.length === 0) return;
+    if (!movingNodes.every((n) => this.store.isFree(n.gx + dx, n.gy + dy, ids))) return;
     this.store.mutate((d) => {
-      for (const n of d.nodes) if (ids.has(n.id)) { n.gx += dx; n.gy += dy; }
+      for (const n of [...d.nodes, ...d.texts]) if (ids.has(n.id)) { n.gx += dx; n.gy += dy; }
     }, "nudge");
   }
 }

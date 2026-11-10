@@ -1,6 +1,6 @@
-import { ICON_NAMES } from "../glyphs/icons";
+import { ICON_NAMES } from "../glyphs/catalog";
 import type { Store } from "../model/store";
-import { ICON_KEYS, IconKey, isIconKey, snap } from "../model/types";
+import { ICON_KEYS, IconKey, TEXT_MAX_LENGTH, TEXT_SIZES, TEXT_SIZE_NAMES, isIconKey, isTextSize, snap } from "../model/types";
 import { h, svg } from "./dom";
 import { UI_ICONS } from "./icons";
 
@@ -12,7 +12,7 @@ export class Inspector {
   private body = h("div", { class: "inspector-body" });
   private refreshers: Refresher[] = [];
   private signature = "";
-  private focusTarget: HTMLInputElement | null = null;
+  private focusTarget: HTMLInputElement | HTMLTextAreaElement | null = null;
 
   constructor(private store: Store) {
     this.el = h("section", { class: "inspector", "aria-label": "Inspector" }, h("h2", {}, "Inspector"), this.body);
@@ -30,7 +30,7 @@ export class Inspector {
 
   private signatureNow(): string {
     const sel = [...this.store.selection].sort();
-    const kind = sel.length === 1 ? (this.store.node(sel[0]) ? "n" : this.store.edge(sel[0]) ? "e" : "x") : "";
+    const kind = sel.length === 1 ? (this.store.node(sel[0]) ? "n" : this.store.edge(sel[0]) ? "e" : this.store.textBox(sel[0]) ? "t" : "x") : "";
     return `${sel.join(",")}|${kind}`;
   }
 
@@ -45,6 +45,7 @@ export class Inspector {
     if (sel.length > 1) return this.renderMulti(sel.length);
     if (this.store.node(sel[0])) return this.renderNode(sel[0]);
     if (this.store.edge(sel[0])) return this.renderEdge(sel[0]);
+    if (this.store.textBox(sel[0])) return this.renderText(sel[0]);
   }
 
   // ------------------------------------------------------------- field helpers
@@ -55,6 +56,14 @@ export class Inspector {
 
   private text(get: () => string, set: (v: string) => void, placeholder = ""): HTMLInputElement {
     const el = h("input", { type: "text", placeholder, spellcheck: false });
+    el.value = get();
+    el.addEventListener("input", () => set(el.value));
+    this.refreshers.push(() => { if (document.activeElement !== el) el.value = get(); });
+    return el;
+  }
+
+  private area(get: () => string, set: (v: string) => void, placeholder = ""): HTMLTextAreaElement {
+    const el = h("textarea", { rows: 4, placeholder, spellcheck: false, maxlength: TEXT_MAX_LENGTH });
     el.value = get();
     el.addEventListener("input", () => set(el.value));
     this.refreshers.push(() => { if (document.activeElement !== el) el.value = get(); });
@@ -97,8 +106,9 @@ export class Inspector {
         "dl",
         { class: "keys" },
         ...[
-          ["V / C", "Select / connect tool"],
+          ["V / C / X", "Select / connect / text tool"],
           ["Q / E", "Rotate the view"],
+          ["T", "Switch between 3D and 2D"],
           ["F", "Fit board to screen"],
           ["Delete", "Remove selection"],
           ["Cmd/Ctrl+D", "Duplicate"],
@@ -151,6 +161,38 @@ export class Inspector {
         this.field("Column", this.number(() => node().gx, move("gx"), 0.5)),
         this.field("Row", this.number(() => node().gy, move("gy"), 0.5))),
       h("p", { class: "muted" }, "Positions snap to half cells. Tiles need a full cell of space between them on at least one axis."),
+      this.action("sparkle", "Duplicate", () => this.store.duplicateSelected()),
+      this.action("trash", "Delete", () => this.store.deleteSelected(), true),
+    );
+  }
+
+  private renderText(id: string): void {
+    const box = () => this.store.textBox(id)!;
+    const patch = (fn: (t: ReturnType<typeof box>) => void, key?: string) =>
+      this.store.mutate((d) => { const t = d.texts.find((x) => x.id === id); if (t) fn(t); }, key);
+
+    const text = this.area(() => box().text, (v) => patch((t) => { t.text = v; }, "text:" + id), "Type a caption. Enter starts a new line.");
+    this.focusTarget = text;
+
+    const size = h("select", {});
+    for (const k of TEXT_SIZES) size.append(h("option", { value: k }, TEXT_SIZE_NAMES[k]));
+    size.value = box().size;
+    size.addEventListener("change", () => { if (isTextSize(size.value)) { const v = size.value; patch((t) => { t.size = v; }); } });
+    this.refreshers.push(() => { size.value = box().size; });
+
+    const move = (axis: "gx" | "gy") => (v: number | undefined) => {
+      if (v === undefined || !Number.isFinite(v)) return;
+      patch((t) => { t[axis] = snap(v); });
+    };
+
+    this.body.append(
+      this.field("Text", text),
+      this.field("Size", size),
+      this.check("Draw a box around it", () => !!box().boxed, (v) => patch((t) => { if (v) t.boxed = true; else delete t.boxed; })),
+      h("div", { class: "row2" },
+        this.field("Column", this.number(() => box().gx, move("gx"), 0.5)),
+        this.field("Row", this.number(() => box().gy, move("gy"), 0.5))),
+      h("p", { class: "muted" }, "Text boxes are labels for the picture. Arrows connect components, not text."),
       this.action("sparkle", "Duplicate", () => this.store.duplicateSelected()),
       this.action("trash", "Delete", () => this.store.deleteSelected(), true),
     );

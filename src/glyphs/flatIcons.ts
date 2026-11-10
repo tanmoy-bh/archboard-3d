@@ -1,7 +1,6 @@
 /**
- * Glyph set of the "architecture board" style: one icon per component type, drawn in a 48x48 box
- * centred on (x, y). Icons are SVG fragments so they stay crisp at any size and are rasterised
- * into textures for the 3D scene (and reused as-is in the palette and legend).
+ * The flat (2D) glyph set of the "architecture board" style: one icon per component type, drawn in a
+ * 48x48 box centred on (x, y). Used only by the 2D view mode; the 3D view uses models.ts instead.
  */
 import type { IconKey } from "../model/types";
 
@@ -31,7 +30,14 @@ const dbCluster = (x: number, y: number, top: string, bottom: string, line: stri
 
 export const ICONS: Record<IconKey, IconFn> = {
   svc: (x, y) => stack3(x, y, 30, 24, ["#4caf50", "#3b9442", "#2e7d32"], "#1b4d1f", 7, 6),
-  redis: (x, y) => stack3(x, y, 24, 24, ["#e05a47", "#cf3f2c", "#b8321f"], "#6e1a10", 6, 6),
+  redis: (x, y) => {
+    const rhombus = (cy: number) => `M${x - 21} ${cy} L${x} ${cy - 9} L${x + 21} ${cy} L${x} ${cy + 9} z`;
+    const layers = (
+      [[10, "#b8321f"], [2, "#cf3f2c"], [-6, "#e8453a"]] as const
+    ).map(([o, c]) => `<path d="${rhombus(y + o + 4)}" ${st("#8f1b10", "#5a0f08", 1.3)} stroke-linejoin="round"/><path d="${rhombus(y + o)}" ${st(c, "#5a0f08", 1.3)} stroke-linejoin="round"/>`);
+    return layers.join("") +
+      `<ellipse cx="${x - 7}" cy="${y - 6}" rx="6" ry="2.6" fill="#fff"/><path d="M${x + 1} ${y - 6.5} L${x + 14} ${y - 8.5} L${x + 8} ${y - 3} z" fill="#fff" stroke-linejoin="round"/>`;
+  },
   db: (x, y) => dbCluster(x, y, "#5aa2ff", "#3d8bf0", "#1d4f9e"),
   es: (x, y) =>
     dbCluster(x, y, "#f6c24c", "#f0b232", "#93630a") +
@@ -104,29 +110,42 @@ export const ICONS: Record<IconKey, IconFn> = {
       .map(([a, b, c]) => `<rect x="${x + a - 1}" y="${y + b - 1}" width="13" height="13" rx="3" fill="${c}" stroke="#222" stroke-width="1"/>`).join(""),
   box: (x, y) =>
     `<path d="M${x} ${y - 18} l17 9 v19 l-17 9 l-17 -9 v-19 z" ${st("#f6c24c", "#8a5a00")}/><path d="M${x - 17} ${y - 9} l17 9 l17 -9 M${x} ${y} v18" fill="none" stroke="#8a5a00" stroke-width="1.6"/>`,
+  decision: (x, y) =>
+    `<path d="M${x} ${y - 20} L${x + 22} ${y} L${x} ${y + 20} L${x - 22} ${y} z" ${st("#f6c24c", "#8a5a00", 1.8)}/>` +
+    `<text x="${x}" y="${y + 7}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="21" fill="#5c3b00">?</text>`,
+  startend: (x, y) =>
+    `<rect x="${x - 22}" y="${y - 12}" width="44" height="24" rx="12" ${st("#4caf50", "#1f6b24", 1.8)}/><circle cx="${x}" cy="${y}" r="6" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="${x}" cy="${y}" r="2.4" fill="#fff"/>`,
+  process: (x, y) =>
+    `<rect x="${x - 21}" y="${y - 14}" width="42" height="28" rx="3" ${st("#5aa2ff", "#1d4f9e", 1.8)}/><path d="M${x - 14} ${y - 14} v28 M${x + 14} ${y - 14} v28" stroke="#1d4f9e" stroke-width="1.8"/><path d="M${x - 8} ${y - 6} h16 M${x - 8} ${y} h11 M${x - 8} ${y + 6} h14" stroke="#dbe9ff" stroke-width="2" stroke-linecap="round"/>`,
+  loop: (x, y) =>
+    `<path d="M${x + 9} ${y - 10.7} A14 14 0 1 0 ${x + 10.7} ${y + 9}" fill="none" stroke="#7b5cd6" stroke-width="4.2" stroke-linecap="round"/><path d="M${x + 17.5} ${y + 1} L${x + 16} ${y + 14} L${x + 5.5} ${y + 8} z" fill="#7b5cd6" stroke="#7b5cd6" stroke-width="1" stroke-linejoin="round"/>`,
+  fork: (x, y) =>
+    `<rect x="${x - 19}" y="${y - 3}" width="38" height="6" rx="2" ${st("#3d4350", "#1d2128", 1.2)}/>` +
+    `<path d="M${x} ${y - 20} V${y - 7} M${x - 12} ${y + 4} V${y + 14} M${x + 12} ${y + 4} V${y + 14}" stroke="#ef7d45" stroke-width="2.6" stroke-linecap="round"/>` +
+    `<path d="M${x - 5} ${y - 9} h10 l-5 6 z M${x - 17} ${y + 12} h10 l-5 7 z M${x + 7} ${y + 12} h10 l-5 7 z" fill="#ef7d45"/>`,
+  timer: (x, y) =>
+    `<circle cx="${x}" cy="${y + 2}" r="16" ${st("#f1f3f6", "#4b5a70", 2.4)}/><rect x="${x - 3}" y="${y - 18}" width="6" height="4" rx="1" fill="#4b5a70"/><path d="M${x} ${y + 2} V${y - 9} M${x} ${y + 2} l7 4" stroke="#222831" stroke-width="2.4" stroke-linecap="round"/><circle cx="${x}" cy="${y + 2}" r="2" fill="#e05a47"/>`,
+  trigger: (x, y) =>
+    `<path d="M${x + 4} ${y - 21} L${x - 13} ${y + 3} L${x - 2} ${y + 3} L${x - 6} ${y + 21} L${x + 14} ${y - 5} L${x + 3} ${y - 5} L${x + 10} ${y - 21} z" ${st("#f6c24c", "#8a5a00", 1.7)} stroke-linejoin="round"/>`,
+  http: (x, y) =>
+    `<rect x="${x - 22}" y="${y - 16}" width="44" height="32" rx="4" ${st("#4a90f0", "#1d4f9e", 1.7)}/><path d="M${x - 22} ${y - 8} h44" stroke="#1d4f9e" stroke-width="1.5"/><circle cx="${x - 16}" cy="${y - 12}" r="1.6" fill="#e05a47"/><circle cx="${x - 11}" cy="${y - 12}" r="1.6" fill="#f6c24c"/><circle cx="${x - 6}" cy="${y - 12}" r="1.6" fill="#4caf50"/>` +
+    `<text x="${x}" y="${y + 9}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="12" fill="#fff">HTTP</text>`,
+  rest: (x, y) =>
+    `<rect x="${x - 22}" y="${y - 16}" width="44" height="32" rx="4" ${st("#2f9e6e", "#1c6b49", 1.7)}/>` +
+    `<text x="${x}" y="${y + 4.5}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="11.5" fill="#fff">{REST}</text>`,
+  websocket: (x, y) =>
+    `<rect x="${x - 22}" y="${y - 17}" width="44" height="34" rx="5" ${st("#7b5cd6", "#4b3a8f", 1.7)}/>` +
+    `<path d="M${x - 14} ${y - 6} H${x + 14} M${x - 14} ${y - 6} l6 -5 M${x - 14} ${y - 6} l6 5 M${x + 14} ${y - 6} l-6 -5 M${x + 14} ${y - 6} l-6 5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<text x="${x}" y="${y + 11}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="11" fill="#fff">WS</text>`,
+  sse: (x, y) =>
+    `<rect x="${x - 22}" y="${y - 17}" width="44" height="34" rx="5" ${st("#ef7d45", "#8a3a12", 1.7)}/>` +
+    `<path d="M${x - 15} ${y - 10} H${x + 14} M${x + 14} ${y - 10} l-5 -4 M${x + 14} ${y - 10} l-5 4 M${x - 15} ${y - 3} H${x + 6} M${x + 6} ${y - 3} l-5 -4 M${x + 6} ${y - 3} l-5 4" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<text x="${x}" y="${y + 12}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="11" fill="#fff">SSE</text>`,
+  webhook: (x, y) =>
+    `<path d="M${x + 8} ${y - 12} V${y + 2} a10 10 0 0 1 -20 0" fill="none" stroke="#d6457a" stroke-width="4.4" stroke-linecap="round"/><circle cx="${x + 8}" cy="${y - 15}" r="5" ${st("#d6457a", "#8a2250", 1.4)}/><circle cx="${x - 12}" cy="${y + 2}" r="4" ${st("#f2a0bd", "#8a2250", 1.4)}/><path d="M${x - 19} ${y + 17} h30" stroke="#8a2250" stroke-width="3" stroke-linecap="round"/>`,
   globe: (x, y) =>
     `<circle cx="${x}" cy="${y}" r="17" ${st("#5aa2ff", "#1d4f9e")}/><ellipse cx="${x}" cy="${y}" rx="7" ry="17" fill="none" stroke="#1d4f9e" stroke-width="1.4"/><path d="M${x - 17} ${y} h34 M${x - 14} ${y - 9} h28 M${x - 14} ${y + 9} h28" stroke="#1d4f9e" stroke-width="1.2"/>`,
 };
-
-/** Human names, used in the palette, the legend and the type selector. */
-export const ICON_NAMES: Record<IconKey, string> = {
-  svc: "Service", redis: "Redis / cache", db: "Database", es: "Search index", vector: "Vector DB",
-  queue: "Queue / stream", cdn: "CDN", phone: "Mobile client", laptop: "Web client", person: "Person",
-  gateway: "LB / gateway", blob: "Object storage", card: "Payment provider", bell: "Notifications",
-  mail: "Email", sms: "SMS", ai: "AI model / agent", doc: "Documents / logs", graph: "Graph",
-  lock: "Lock / lease", chart: "Dashboard", ring: "Hash ring", filter: "Filter", server: "Servers",
-  apps: "SaaS apps", box: "Sandbox", globe: "External site",
-};
-
-/** Palette grouping. Every icon appears exactly once. */
-export const PALETTE_GROUPS: { title: string; icons: IconKey[] }[] = [
-  { title: "Clients", icons: ["phone", "laptop", "person", "globe", "apps"] },
-  { title: "Edge", icons: ["cdn", "gateway", "filter", "lock"] },
-  { title: "Compute", icons: ["svc", "server", "box", "ai"] },
-  { title: "Data", icons: ["db", "redis", "es", "vector", "blob", "graph", "ring", "doc"] },
-  { title: "Messaging", icons: ["queue", "bell", "mail", "sms"] },
-  { title: "Other", icons: ["card", "chart"] },
-];
 
 /** Full standalone SVG markup for an icon, used for rasterising and for DOM previews. */
 export function iconSvg(icon: IconKey, color: string, px: number): string {

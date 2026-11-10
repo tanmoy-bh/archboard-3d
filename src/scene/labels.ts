@@ -4,7 +4,7 @@
  * azimuth: a ground point (x, z) maps to (right, up) = (x cos a - z sin a, -sin e (x sin a + z cos a)).
  * Pure functions, no Three.js, so they are unit tested.
  */
-import { LABEL_DROP, PXW } from "./constants";
+import { METRICS, LabelMetrics, PXW } from "./constants";
 import { LabelAnchor, V } from "./routing";
 
 interface Box { x0: number; x1: number; y0: number; y1: number }
@@ -30,9 +30,6 @@ export interface EdgeSpec {
 const FRACTIONS = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8];
 const BADGE = 28 * PXW;
 const BADGE_GAP = 15 * PXW;
-const TILE_HALF_W = 1.06; // a square tile seen from a quarter turn is a diamond this wide
-const TILE_BELOW = 0.62;
-const GLYPH_ABOVE = 1.45;
 
 function overlap(a: Box, b: Box): number {
   const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
@@ -41,15 +38,15 @@ function overlap(a: Box, b: Box): number {
 }
 
 /** Choose an anchor for every arrow, in order. Earlier arrows get the better spots. */
-export function placeLabels(az: number, elevation: number, tiles: TileSpec[], edges: EdgeSpec[]): Map<string, LabelAnchor> {
+export function placeLabels(az: number, elevation: number, tiles: TileSpec[], edges: EdgeSpec[], metrics: LabelMetrics = METRICS["3d"]): Map<string, LabelAnchor> {
   const cos = Math.cos(az), sin = Math.sin(az), se = Math.sin(elevation);
   const proj = (x: number, z: number): V => [x * cos - z * sin, -se * (x * sin + z * cos)];
 
   const fixed: Box[] = [];
   for (const t of tiles) {
     const [r, u] = proj(t.cx, t.cz);
-    fixed.push({ x0: r - TILE_HALF_W, x1: r + TILE_HALF_W, y0: u - TILE_BELOW, y1: u + GLYPH_ABOVE });
-    fixed.push({ x0: r - t.labelW / 2, x1: r + t.labelW / 2, y0: u - LABEL_DROP - t.labelH, y1: u - LABEL_DROP });
+    fixed.push({ x0: r - metrics.tileHalfW, x1: r + metrics.tileHalfW, y0: u - metrics.tileBelow, y1: u + metrics.glyphAbove });
+    fixed.push({ x0: r - t.labelW / 2, x1: r + t.labelW / 2, y0: u - metrics.labelDrop - t.labelH, y1: u - metrics.labelDrop });
   }
 
   const placed: Box[] = [];

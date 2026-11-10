@@ -1,4 +1,4 @@
-import { DocData, EdgeData, NodeData, genId, isIconKey, snap } from "./types";
+import { DocData, EdgeData, NodeData, TEXT_MAX_LENGTH, TextData, genId, isIconKey, isTextSize, snap } from "./types";
 
 export function stringifyDoc(doc: DocData): string {
   return JSON.stringify(doc, null, 2);
@@ -57,7 +57,27 @@ export function parseDoc(text: string): DocData {
     }
   }
 
+  const texts: TextData[] = [];
+  if (Array.isArray(raw.texts)) {
+    const used = new Set<string>([...seen, ...edgeIds]);
+    for (const t of raw.texts) {
+      if (!isObj(t)) continue;
+      const gx = Number(t.gx), gy = Number(t.gy);
+      if (!Number.isFinite(gx) || !Number.isFinite(gy)) continue;
+      let id = typeof t.id === "string" && t.id ? t.id : genId("t");
+      while (used.has(id)) id = genId("t");
+      used.add(id);
+      const box: TextData = {
+        id, gx: snap(gx), gy: snap(gy),
+        text: typeof t.text === "string" ? t.text.slice(0, TEXT_MAX_LENGTH) : "",
+        size: isTextSize(t.size) ? t.size : "m",
+      };
+      if (t.boxed === true) box.boxed = true;
+      texts.push(box);
+    }
+  }
+
   const steps = Array.isArray(raw.steps) ? raw.steps.filter((s): s is string => typeof s === "string") : [];
   const title = typeof raw.title === "string" && raw.title ? raw.title : "Untitled architecture";
-  return { version: 1, title, nodes, edges, steps };
+  return { version: 1, title, nodes, edges, texts, steps };
 }

@@ -48,6 +48,7 @@ export function exampleDoc(): DocData {
     title: "Ticketing: held seats",
     nodes: nodes.map(([id, gx, gy, icon, label]): NodeData => ({ id, gx, gy, icon, label })),
     edges: edges.map(([from, to, o], i): EdgeData => ({ id: `e${i + 1}`, from, to, ...o })),
+    texts: [],
     steps: [
       "The waiting room admits users in batches (Kafka plus token status in Redis).",
       "Browse the seat map, then hold a seat with a 10 minute time to live.",

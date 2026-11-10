@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { iconSvg } from "../glyphs/icons";
-import type { IconKey } from "../model/types";
+import { iconSvg } from "../glyphs/flatIcons";
+import type { IconKey, TextSize } from "../model/types";
 import { FONT, Theme } from "../theme";
 
 export interface TexInfo { tex: THREE.Texture; w: number; h: number }
@@ -30,8 +30,6 @@ const SCALE = 3; // texture pixels per CSS pixel
 /** Builds and caches every texture the scene needs for one theme. Recreate it when the theme changes. */
 export class TextureFactory {
   private cache = new Map<string, TexInfo>();
-  /** Called when an asynchronously loaded icon becomes ready, so the caller can re-render. */
-  onLoad: (() => void) | null = null;
 
   constructor(readonly theme: Theme) {}
 
@@ -52,7 +50,7 @@ export class TextureFactory {
     return info;
   }
 
-  /** Rasterised glyph. The image loads asynchronously; the texture updates itself when ready. */
+  /** The flat 2D glyph, rasterised for the 2D view mode. Loads asynchronously and updates itself. */
   icon(icon: IconKey): TexInfo {
     const key = "icon:" + icon;
     const hit = this.cache.get(key);
@@ -61,7 +59,7 @@ export class TextureFactory {
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     const img = new Image();
-    img.onload = () => { tex.image = img; tex.needsUpdate = true; this.onLoad?.(); };
+    img.onload = () => { tex.image = img; tex.needsUpdate = true; };
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(iconSvg(icon, this.theme.fg, 256));
     const info = { tex, w: 52, h: 52 };
     this.cache.set(key, info);
@@ -88,6 +86,57 @@ export class TextureFactory {
         c.fillStyle = this.theme.fg;
         c.fillText(l, w / 2, y);
       });
+    });
+  }
+
+  /** A free text box: several lines, optionally inside a bordered box. Blank text shows a faint "Text". */
+  textBox(text: string, size: TextSize, boxed: boolean): TexInfo {
+    const px = { s: 13, m: 17, l: 25 }[size];
+    const blank = text.trim() === "";
+    const lines = (blank ? "Text" : text).split(/\r?\n/).flatMap((l) => wrap(l, 34));
+    const font = `${size === "l" ? 600 : 500} ${px}px ${FONT}`;
+    const lineH = Math.round(px * 1.32);
+    const padX = boxed ? 13 : 6, padY = boxed ? 9 : 4;
+    const w = Math.ceil(Math.max(...lines.map((l) => measure(font, l)))) + padX * 2;
+    const h = lines.length * lineH + padY * 2;
+    return this.canvasTex(`text:${size}:${boxed}:${blank}:${lines.join("|")}`, w, h, (c) => {
+      if (boxed) {
+        c.beginPath();
+        c.roundRect(1, 1, w - 2, h - 2, 9);
+        c.fillStyle = this.theme.board;
+        c.fill();
+        c.lineWidth = 1.6;
+        c.strokeStyle = this.theme.tile;
+        c.stroke();
+      }
+      c.font = font;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.lineJoin = "round";
+      lines.forEach((l, i) => {
+        const y = padY + i * lineH + lineH / 2;
+        if (!boxed) {
+          c.strokeStyle = this.theme.board;
+          c.lineWidth = 4;
+          c.strokeText(l, w / 2, y);
+        }
+        c.fillStyle = blank ? this.theme.muted : this.theme.fg;
+        c.fillText(l, w / 2, y);
+      });
+    });
+  }
+
+  /** Accent outline drawn around a selected or hovered text box. Includes room for the glow. */
+  textOutline(w: number, h: number): TexInfo {
+    const m = 8;
+    return this.canvasTex(`textOutline:${w}x${h}`, w + m * 2, h + m * 2, (c) => {
+      c.shadowColor = this.theme.accent;
+      c.shadowBlur = 7;
+      c.beginPath();
+      c.roundRect(m, m, w, h, 10);
+      c.lineWidth = 2.4;
+      c.strokeStyle = this.theme.accent;
+      c.stroke();
     });
   }
 

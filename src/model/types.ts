@@ -2,7 +2,9 @@
 export const ICON_KEYS = [
   "svc", "redis", "db", "es", "vector", "queue", "cdn", "phone", "laptop", "person",
   "gateway", "blob", "card", "bell", "mail", "sms", "ai", "doc", "graph", "lock",
-  "chart", "ring", "filter", "server", "apps", "box", "globe",
+  "chart", "ring", "filter", "server", "apps", "box", "globe", "decision",
+  "startend", "process", "loop", "fork", "timer", "trigger",
+  "http", "rest", "websocket", "sse", "webhook",
 ] as const;
 
 export type IconKey = (typeof ICON_KEYS)[number];
@@ -34,11 +36,35 @@ export interface EdgeData {
   dash?: boolean;
 }
 
+export const TEXT_SIZES = ["s", "m", "l"] as const;
+export type TextSize = (typeof TEXT_SIZES)[number];
+export const TEXT_SIZE_NAMES: Record<TextSize, string> = { s: "Small", m: "Medium", l: "Large" };
+export const TEXT_MAX_LENGTH = 2000;
+
+export function isTextSize(v: unknown): v is TextSize {
+  return typeof v === "string" && (TEXT_SIZES as readonly string[]).includes(v);
+}
+
+/** A free text box for captions and labels. It is not a component, so arrows never connect to it. */
+export interface TextData {
+  id: string;
+  /** Position of the centre, in grid cells. Snapped to half cells. */
+  gx: number;
+  gy: number;
+  /** May contain line breaks. */
+  text: string;
+  size: TextSize;
+  /** Draw a bordered box around the text. */
+  boxed?: boolean;
+}
+
 export interface DocData {
   version: 1;
   title: string;
   nodes: NodeData[];
   edges: EdgeData[];
+  /** Free text boxes. Older files have none. */
+  texts: TextData[];
   /** Written step list. Badge N on an arrow refers to steps[N - 1]. */
   steps: string[];
 }
@@ -48,7 +74,7 @@ export const GRID_SNAP = 0.5;
 export const NODE_MIN_GAP = 0.75;
 
 export function emptyDoc(): DocData {
-  return { version: 1, title: "Untitled architecture", nodes: [], edges: [], steps: [] };
+  return { version: 1, title: "Untitled architecture", nodes: [], edges: [], texts: [], steps: [] };
 }
 
 export const snap = (v: number): number => Math.round(v / GRID_SNAP) * GRID_SNAP;
