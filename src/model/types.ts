@@ -5,6 +5,7 @@ export const ICON_KEYS = [
   "chart", "ring", "filter", "server", "apps", "box", "globe", "decision",
   "startend", "process", "loop", "fork", "timer", "trigger",
   "http", "rest", "websocket", "sse", "webhook",
+  "llm", "agent", "rag", "embed", "retriever", "prompt", "guard", "tools", "memory", "mcp",
 ] as const;
 
 export type IconKey = (typeof ICON_KEYS)[number];
@@ -34,6 +35,8 @@ export interface EdgeData {
   hot?: boolean;
   /** Dashed line: async, error or reply paths. */
   dash?: boolean;
+  /** Arrow heads at both ends: a two way link. */
+  both?: boolean;
 }
 
 export const TEXT_SIZES = ["s", "m", "l"] as const;

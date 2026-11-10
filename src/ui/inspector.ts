@@ -108,6 +108,7 @@ export class Inspector {
         ...[
           ["V / C / X", "Select / connect / text tool"],
           ["Q / E", "Rotate the view"],
+          ["R", "Auto-rotate the 3D board"],
           ["T", "Switch between 3D and 2D"],
           ["F", "Fit board to screen"],
           ["Delete", "Remove selection"],
@@ -215,6 +216,7 @@ export class Inspector {
       }), 1, 1)),
       this.check("Key path (accent colour)", () => !!edge().hot, (v) => patch((e) => { if (v) e.hot = true; else delete e.hot; })),
       this.check("Dashed (async, error or reply)", () => !!edge().dash, (v) => patch((e) => { if (v) e.dash = true; else delete e.dash; })),
+      this.check("Arrow heads at both ends (two way)", () => !!edge().both, (v) => patch((e) => { if (v) e.both = true; else delete e.both; })),
       this.action("swap", "Reverse direction", () => this.store.reverseEdge(id)),
       this.action("trash", "Delete", () => this.store.deleteSelected(), true),
     );

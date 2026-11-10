@@ -25,6 +25,7 @@ export class Controller {
   onFocusLabel: () => void = () => {};
   /** Called when the user presses T to switch between the 3D and 2D board. */
   onToggleMode: () => void = () => {};
+  onToggleAutoRotate: () => void = () => {};
 
   private drag: Drag = { kind: "none" };
   private connectFrom: string | null = null;
@@ -89,6 +90,7 @@ export class Controller {
 
   private onDown = (e: PointerEvent): void => {
     this.view.canvas.setPointerCapture(e.pointerId);
+    this.view.holdRotation(true); // auto-rotate waits while the pointer is down
     this.last = { x: e.clientX, y: e.clientY };
 
     if (e.button === 1 || e.button === 2 || this.spaceDown) {
@@ -215,6 +217,7 @@ export class Controller {
   private onUp = (e: PointerEvent): void => {
     const d = this.drag;
     this.drag = { kind: "none" };
+    this.view.holdRotation(false);
     if (this.view.canvas.hasPointerCapture(e.pointerId)) this.view.canvas.releasePointerCapture(e.pointerId);
 
     if (d.kind === "nodes") {
@@ -323,6 +326,7 @@ export class Controller {
       case "x": this.setTool("text"); break;
       case "q": this.view.rotateView(-1); break;
       case "e": this.view.rotateView(1); break;
+      case "r": this.onToggleAutoRotate(); break;
       case "f": this.view.fit(); break;
       case "t": this.onToggleMode(); break;
       case "=": case "+": this.view.zoomCentered(1.2); break;

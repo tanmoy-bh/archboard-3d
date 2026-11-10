@@ -53,6 +53,7 @@ export function parseDoc(text: string): DocData {
       if (typeof e.step === "number" && Number.isInteger(e.step) && e.step > 0) edge.step = e.step;
       if (e.hot === true) edge.hot = true;
       if (e.dash === true) edge.dash = true;
+      if (e.both === true) edge.both = true;
       edges.push(edge);
     }
   }

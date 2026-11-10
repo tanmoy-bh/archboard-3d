@@ -143,3 +143,37 @@ describe("palette sections", () => {
     expect(doc.nodes.map((n) => n.icon)).toEqual(keys);
   });
 });
+
+describe("AI components", () => {
+  it("has an AI section with RAG, LLM, agent, embedding, retriever, prompt, guardrails, tools, memory and MCP", () => {
+    const ai = PALETTE_GROUPS.find((g) => g.title === "AI");
+    expect(ai?.icons).toEqual(["ai", "llm", "agent", "rag", "embed", "retriever", "prompt", "guard", "tools", "memory", "mcp"]);
+    expect(ICON_NAMES.rag).toBe("RAG pipeline");
+    expect(ICON_NAMES.llm).toBe("LLM");
+  });
+
+  it("opens files that use the AI components", () => {
+    const keys = ["llm", "agent", "rag", "embed", "retriever", "prompt", "guard", "tools", "memory", "mcp"];
+    const doc = parseDoc(JSON.stringify({ version: 1, title: "x", edges: [], steps: [], nodes: keys.map((icon, i) => ({ id: "n" + i, gx: i * 2, gy: 0, icon, label: icon })) }));
+    expect(doc.nodes.map((n) => n.icon)).toEqual(keys);
+  });
+});
+
+describe("two way arrows", () => {
+  const board = (both: unknown) => JSON.stringify({
+    version: 1, title: "x", steps: [],
+    nodes: [{ id: "a", gx: 0, gy: 0, icon: "svc", label: "A" }, { id: "b", gx: 3, gy: 0, icon: "db", label: "B" }],
+    edges: [{ id: "e1", from: "a", to: "b", both }],
+  });
+
+  it("keeps the both-ends flag through a file round trip", () => {
+    const doc = parseDoc(board(true));
+    expect(doc.edges[0].both).toBe(true);
+    expect(parseDoc(stringifyDoc(doc)).edges[0].both).toBe(true);
+  });
+
+  it("drops the flag unless it is exactly true, and older boards stay one way", () => {
+    expect(parseDoc(board("yes")).edges[0].both).toBeUndefined();
+    expect(parseDoc(board(undefined)).edges[0].both).toBeUndefined();
+  });
+});

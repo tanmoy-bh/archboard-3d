@@ -17,6 +17,11 @@ const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 
 /** Owns the Three.js scene: camera, lights, floor, and one view object per node and edge. */
+/** Auto-rotate speed in radians per second (a full turn takes about 42 seconds). */
+const AUTO_ROTATE_SPEED = 0.15;
+/** Re-place edge labels after the view has turned this far (radians, about 10 degrees). */
+const LABEL_RESYNC = 0.17;
+
 export class SceneView {
   readonly canvas: HTMLCanvasElement;
 
@@ -42,6 +47,9 @@ export class SceneView {
   private elevTarget = ELEVATION;
   private az = Math.PI / 4;
   private azTarget = Math.PI / 4;
+  private spin = false; // auto-rotate switched on
+  private spinHold = false; // paused while the pointer is down so dragging stays steady
+  private labelAz = Math.PI / 4; // the view angle edge labels were last placed for
   private zoom = 1;
   private target = new THREE.Vector3();
   private size = new THREE.Vector2(1, 1);
@@ -167,6 +175,15 @@ export class SceneView {
     this.fit(!animate); // when animating, leave the azimuth and tilt to glide to their targets
   }
 
+  /** Keep turning the 3D board slowly. It only runs in 3D mode, and pauses while the pointer is down. */
+  get autoRotate(): boolean { return this.spin; }
+  setAutoRotate(on: boolean): void {
+    this.spin = on;
+    if (on && this.mode === "3d") this.fitForSpin();
+    else if (!on) this.sync();
+  }
+  holdRotation(hold: boolean): void { this.spinHold = hold; }
+
   rotateView(dir: 1 | -1): void {
     this.azTarget += (dir * Math.PI) / 2;
     this.sync(); // label placement depends on the view angle
@@ -238,8 +255,38 @@ export class SceneView {
     this.target.z += r3[1] * dr + (fwd[1] * du) / Math.sin(e);
   }
 
+  /**
+   * Centre on the middle of the board and zoom so it stays on screen from every angle, for auto-rotate.
+   * The board turns about the centre, so the fit is taken over a full turn instead of the current angle.
+   */
+  private fitForSpin(): void {
+    const { nodes, texts } = this.store.doc;
+    if (nodes.length === 0 && texts.length === 0) { this.target.set(0, 0, 0); this.updateCamera(); return; }
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    const grow = (x: number, z: number) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
+    for (const n of nodes) { grow(n.gx * SP - HALF, n.gy * SP - HALF); grow(n.gx * SP + HALF, n.gy * SP + HALF); }
+    for (const t of texts) grow(t.gx * SP, t.gy * SP);
+    this.target.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
+    const e = this.elevTarget;
+    let hr = 0, hu = 0;
+    for (let i = 0; i < 24; i++) {
+      const az = (i / 24) * Math.PI * 2;
+      const b = this.boardBounds(az, e);
+      if (!b) continue;
+      const rT = this.target.x * Math.cos(az) - this.target.z * Math.sin(az);
+      const uT = -Math.sin(e) * (this.target.x * Math.sin(az) + this.target.z * Math.cos(az));
+      hr = Math.max(hr, b.maxR - rT, rT - b.minR);
+      hu = Math.max(hu, b.maxU - uT, uT - b.minU);
+    }
+    const aspect = this.size.x / this.size.y;
+    const w = hr * 2 + 4, h = hu * 2 + 4;
+    this.zoom = Math.min(2, Math.max(MIN_ZOOM, Math.min((FRUSTUM_H * aspect) / w, FRUSTUM_H / h)));
+    this.updateCamera();
+  }
+
   /** Centre and zoom so the whole board is visible. `snapAz` jumps straight to the target azimuth. */
   fit(snapAz = true): void {
+    if (this.spin && this.mode === "3d") { this.fitForSpin(); return; }
     const az = this.azTarget;
     const b = this.boardBounds(az);
     if (!b) {
@@ -392,7 +439,8 @@ export class SceneView {
       const pill = e.label ? tex.pill(e.label, !!e.hot) : null;
       specs.push({ id: e.id, pts: route.pts, pillW: pill ? pill.w * PXW : 0, pillH: pill ? pill.h * PXW : 0, badge: !!e.step });
     }
-    const anchors = placeLabels(this.azTarget, this.elevTarget, tiles, specs, METRICS[this.mode]);
+    this.labelAz = this.spin ? this.az : this.azTarget;
+    const anchors = placeLabels(this.labelAz, this.elevTarget, tiles, specs, METRICS[this.mode]);
     for (const e of doc.edges) {
       const route = routes.get(e.id);
       if (!route) continue;
@@ -439,6 +487,13 @@ export class SceneView {
     const t = now / 1000;
 
     let moved = false;
+    if (this.spin && !this.spinHold && this.mode === "3d") {
+      // Advance the target and the live angle together so a Q or E turn still glides on top of the spin.
+      const d = AUTO_ROTATE_SPEED * dt;
+      this.azTarget += d;
+      this.az += d;
+      moved = true;
+    }
     if (Math.abs(this.azTarget - this.az) > 1e-4) {
       this.az += (this.azTarget - this.az) * Math.min(1, dt * 9);
       if (Math.abs(this.azTarget - this.az) < 2e-3) this.az = this.azTarget;
@@ -450,6 +505,8 @@ export class SceneView {
       moved = true;
     }
     if (moved) this.updateCamera();
+    // Pills and badges are placed for one view angle, so re-place them every few degrees of spin.
+    if (this.spin && Math.abs(this.az - this.labelAz) > LABEL_RESYNC) this.sync();
     for (const n of this.nodes.values()) n.tick(t, dt, this.az);
     this.ghost?.tick(t, dt, this.az);
     for (const e of this.edges.values()) e.tick(t);

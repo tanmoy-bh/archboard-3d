@@ -11,6 +11,7 @@ export interface FileActions {
   exportPng(): void;
   loadExample(): void;
   toggleTheme(): void;
+  toggleAutoRotate(): void;
   setMode(mode: ViewMode): void;
   clearAll(): void;
 }
@@ -26,12 +27,13 @@ export class Toolbar {
   private undo!: HTMLButtonElement;
   private redo!: HTMLButtonElement;
   private themeBtn!: HTMLButtonElement;
+  private spinBtn!: HTMLButtonElement;
   private modeBtns!: Record<ViewMode, HTMLButtonElement>;
 
   constructor(
     private store: Store,
     private controller: Controller,
-    private view: { rotateView(d: 1 | -1): void; fit(): void; zoomCentered(f: number): void },
+    private view: { rotateView(d: 1 | -1): void; fit(): void; zoomCentered(f: number): void; readonly autoRotate: boolean },
     private files: FileActions,
   ) {
     const btn = (icon: IconName, title: string, onclick: () => void, label?: string) =>
@@ -43,6 +45,7 @@ export class Toolbar {
     this.textTool = btn("text", "Add a text box (X)", () => controller.setTool("text"), "Text");
     this.undo = btn("undo", "Undo (Cmd/Ctrl+Z)", () => store.undo());
     this.redo = btn("redo", "Redo (Shift+Cmd/Ctrl+Z)", () => store.redo());
+    this.spinBtn = btn("orbit", "Auto-rotate the 3D board (R)", () => files.toggleAutoRotate(), "Auto");
     this.themeBtn = btn("sun", "Switch light or dark theme", () => files.toggleTheme());
     const modeBtn = (mode: ViewMode, label: string, title: string) =>
       h("button", { class: "seg-btn", type: "button", title, "aria-label": title, "data-mode": mode, onclick: () => files.setMode(mode) }, label);
@@ -66,6 +69,7 @@ export class Toolbar {
       btn("minus", "Zoom out (-)", () => view.zoomCentered(1 / 1.2)),
       btn("plus", "Zoom in (+)", () => view.zoomCentered(1.2)),
       btn("fit", "Fit board to screen (F)", () => view.fit()),
+      this.spinBtn,
       sep(),
       modeToggle,
       h("span", { class: "grow" }),
@@ -93,6 +97,11 @@ export class Toolbar {
     this.select.classList.toggle("active", this.controller.tool === "select");
     this.connect.classList.toggle("active", this.controller.tool === "connect");
     this.textTool.classList.toggle("active", this.controller.tool === "text");
+    const spinning = this.view.autoRotate;
+    this.spinBtn.classList.toggle("active", spinning && mode === "3d");
+    this.spinBtn.setAttribute("aria-pressed", String(spinning && mode === "3d"));
+    this.spinBtn.disabled = mode !== "3d";
+    this.spinBtn.title = mode === "3d" ? "Auto-rotate the 3D board (R)" : "Auto-rotate works in 3D only";
     this.undo.disabled = !this.store.canUndo;
     this.redo.disabled = !this.store.canRedo;
     this.themeBtn.replaceChildren(svg(UI_ICONS[dark ? "sun" : "moon"]));

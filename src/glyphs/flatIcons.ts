@@ -143,6 +143,48 @@ export const ICONS: Record<IconKey, IconFn> = {
     `<text x="${x}" y="${y + 12}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="11" fill="#fff">SSE</text>`,
   webhook: (x, y) =>
     `<path d="M${x + 8} ${y - 12} V${y + 2} a10 10 0 0 1 -20 0" fill="none" stroke="#d6457a" stroke-width="4.4" stroke-linecap="round"/><circle cx="${x + 8}" cy="${y - 15}" r="5" ${st("#d6457a", "#8a2250", 1.4)}/><circle cx="${x - 12}" cy="${y + 2}" r="4" ${st("#f2a0bd", "#8a2250", 1.4)}/><path d="M${x - 19} ${y + 17} h30" stroke="#8a2250" stroke-width="3" stroke-linecap="round"/>`,
+  llm: (x, y) =>
+    `<path d="M${x - 17} ${y - 18} H${x + 17} a5 5 0 0 1 5 5 V${y + 5} a5 5 0 0 1 -5 5 H${x - 3} L${x - 12} ${y + 19} V${y + 10} H${x - 17} a5 5 0 0 1 -5 -5 V${y - 13} a5 5 0 0 1 5 -5 z" ${st("#5865f2", "#2a3190", 1.7)} stroke-linejoin="round"/>` +
+    `<text x="${x}" y="${y}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="12" fill="#fff">LLM</text>`,
+  agent: (x, y) =>
+    `<path d="M${x} ${y - 9} V${y - 16}" stroke="#0d3d46" stroke-width="1.8" stroke-linecap="round"/><circle cx="${x}" cy="${y - 19}" r="3.2" ${st("#ffb020", "#8a5a00", 1.4)}/>` +
+    `<rect x="${x - 22}" y="${y - 1}" width="4" height="10" rx="2" ${st("#168a9b", "#0d3d46", 1.4)}/><rect x="${x + 18}" y="${y - 1}" width="4" height="10" rx="2" ${st("#168a9b", "#0d3d46", 1.4)}/>` +
+    `<rect x="${x - 18}" y="${y - 9}" width="36" height="26" rx="7" ${st("#1fb6c9", "#0d5a66", 1.8)}/>` +
+    [-7, 7].map((o) => `<circle cx="${x + o}" cy="${y + 2}" r="4" fill="#fff"/><circle cx="${x + o}" cy="${y + 2.6}" r="1.7" fill="#0d3d46"/>`).join("") +
+    `<path d="M${x - 6} ${y + 11} h12" stroke="#0d3d46" stroke-width="2" stroke-linecap="round"/>`,
+  rag: (x, y) =>
+    `<rect x="${x - 21}" y="${y - 19}" width="28" height="36" rx="3" ${st("#fff", "#7a2a8a", 1.6)}/>` +
+    `<text x="${x - 7}" y="${y - 8}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="9" fill="#c13fd6">RAG</text>` +
+    `<path d="M${x - 17} ${y - 2} h20 M${x - 17} ${y + 4} h16 M${x - 17} ${y + 10} h12" stroke="#b9a0c8" stroke-width="2" stroke-linecap="round"/>` +
+    `<circle cx="${x + 8}" cy="${y + 4}" r="11" fill="#d9f2ff" fill-opacity=".55" stroke="#c13fd6" stroke-width="3.4"/><path d="M${x + 16} ${y + 12} l8 8" stroke="#8a2a9c" stroke-width="4.4" stroke-linecap="round"/>`,
+  embed: (x, y) =>
+    `<path d="M${x - 17} ${y + 15} V${y - 19} M${x - 17} ${y + 15} H${x + 21} M${x - 17} ${y + 15} L${x - 4} ${y + 23}" fill="none" stroke="#c77a12" stroke-width="2" stroke-linecap="round"/>` +
+    [[-2, -9], [8, -1], [-7, 2], [10, -13]].map(([a, b]) => `<path d="M${x - 17} ${y + 15} L${x + a} ${y + b}" stroke="#e3b25c" stroke-width="1" stroke-dasharray="2 2"/><circle cx="${x + a}" cy="${y + b}" r="3.6" ${st("#fbbf24", "#8a5200", 1.3)}/>`).join(""),
+  retriever: (x, y) =>
+    [[30, "#f43f5e"], [23, "#f2627a"], [16, "#f48ca0"], [10, "#f7b3c0"]].map(([h, c], i) => `<rect x="${x - 21 + i * 11}" y="${y + 17 - (h as number)}" width="9" height="${h}" rx="2" ${st(c as string, "#9c2543", 1.3)}/>`).join("") +
+    `<path d="M${x - 24} ${y + 18} h48" stroke="#9c2543" stroke-width="1.8" stroke-linecap="round"/>` +
+    `<path d="M${x - 16.5} ${y - 21} l1.7 3.6 l3.9 .5 l-2.9 2.7 l.8 3.9 l-3.5 -2 l-3.5 2 l.8 -3.9 l-2.9 -2.7 l3.9 -.5 z" fill="#ffd24d" stroke="#a87900" stroke-width="1"/>`,
+  prompt: (x, y) =>
+    `<rect x="${x - 20}" y="${y - 19}" width="40" height="38" rx="5" ${st("#20b486", "#0d6b4d", 1.8)}/><rect x="${x - 20}" y="${y - 19}" width="40" height="8" rx="4" fill="#0f7f5c"/>` +
+    `<path d="M${x - 13} ${y - 4} h26 M${x - 13} ${y + 3} h18" stroke="#d8fff0" stroke-width="2.2" stroke-linecap="round"/>` +
+    `<path d="M${x - 13} ${y + 8} l5 3.5 l-5 3.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M${x - 5} ${y + 15} h7" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`,
+  guard: (x, y) =>
+    `<path d="M${x} ${y - 21} L${x + 18} ${y - 14} V${y + 2} C${x + 18} ${y + 13} ${x + 8} ${y + 19} ${x} ${y + 22} C${x - 8} ${y + 19} ${x - 18} ${y + 13} ${x - 18} ${y + 2} V${y - 14} z" ${st("#3a6fd8", "#1c3f8f", 1.8)} stroke-linejoin="round"/>` +
+    `<path d="M${x - 8} ${y + 1} L${x - 2} ${y + 8} L${x + 9} ${y - 7}" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`,
+  tools: (x, y) =>
+    `<g transform="rotate(-35 ${x} ${y})"><path d="M${x} ${y - 2} V${y + 20}" stroke="#64748b" stroke-width="9" stroke-linecap="round"/><path d="M${x} ${y - 2} V${y + 20}" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>` +
+    `<path d="M${x - 5.5} ${y - 22} A11 11 0 1 0 ${x + 5.5} ${y - 22}" fill="none" stroke="#64748b" stroke-width="8" stroke-linecap="round"/><path d="M${x - 5.5} ${y - 22} A11 11 0 1 0 ${x + 5.5} ${y - 22}" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round"/></g>` +
+    `<polygon points="${[0, 1, 2, 3, 4, 5].map((i) => `${x + 14 + 8 * Math.cos((i * Math.PI) / 3)},${y + 13 + 8 * Math.sin((i * Math.PI) / 3)}`).join(" ")}" ${st("#f59e0b", "#8a5a00", 1.5)}/><circle cx="${x + 14}" cy="${y + 13}" r="2.6" fill="#8a5a00"/>`,
+  memory: (x, y) =>
+    `<rect x="${x - 23}" y="${y - 6}" width="46" height="21" rx="2.5" ${st("#1f9d6a", "#0f5c3e", 1.6)}/>` +
+    [-15, -5, 5, 15].map((o) => `<rect x="${x + o - 4.5}" y="${y - 2}" width="9" height="10" rx="1.5" fill="#1b1f27"/>`).join("") +
+    Array.from({ length: 11 }, (_, i) => `<rect x="${x - 21 + i * 4.2}" y="${y + 15}" width="2.6" height="4.5" fill="#e6c04a"/>`).join("") +
+    [[8, -12, 2.2], [14, -17, 3], [21, -22, 4]].map(([a, b, r]) => `<circle cx="${x + a}" cy="${y + b}" r="${r}" ${st("#9bf0c9", "#1f9d6a", 1.2)}/>`).join(""),
+  mcp: (x, y) =>
+    `<rect x="${x - 17}" y="${y - 5}" width="34" height="26" rx="4" ${st("#475569", "#1e293b", 1.7)}/>` +
+    `<circle cx="${x - 10}" cy="${y + 1}" r="1.8" fill="#7dff9a"/><circle cx="${x - 5}" cy="${y + 1}" r="1.8" fill="#38bdf8"/>` +
+    `<text x="${x}" y="${y + 15}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="10" fill="#fff">MCP</text>` +
+    `<path d="M${x} ${y - 5} v-4" stroke="#1e293b" stroke-width="3"/><rect x="${x - 10}" y="${y - 18}" width="20" height="9" rx="2.5" ${st("#334155", "#1e293b", 1.5)}/><rect x="${x - 6}" y="${y - 25}" width="3.4" height="7.5" fill="#e6c04a"/><rect x="${x + 2.6}" y="${y - 25}" width="3.4" height="7.5" fill="#e6c04a"/>`,
   globe: (x, y) =>
     `<circle cx="${x}" cy="${y}" r="17" ${st("#5aa2ff", "#1d4f9e")}/><ellipse cx="${x}" cy="${y}" rx="7" ry="17" fill="none" stroke="#1d4f9e" stroke-width="1.4"/><path d="M${x - 17} ${y} h34 M${x - 14} ${y - 9} h28 M${x - 14} ${y + 9} h28" stroke="#1d4f9e" stroke-width="1.2"/>`,
 };

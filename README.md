@@ -8,7 +8,7 @@ original 2D glyphs.
 The look follows the **architecture board** style: one glyph per component type inside a dotted tile,
 the name underneath, right-angle arrows with small label pills, the key path in an accent colour,
 dashed lines for async or reply paths, and numbered purple step badges that tie the picture to a
-written "How it works" list. The 39 components and the dark and light theme tokens come from that style: each
+written "How it works" list. The 49 components and the dark and light theme tokens come from that style: each
 glyph exists as a hand-built 3D model (3D mode) and as the original flat drawing (2D mode).
 
 ## Access
@@ -50,6 +50,9 @@ Needs a browser with WebGL.
 | Connect | Press `C`, then drag from one tile to another (or click one, then the other). |
 | Logic blocks | The "Logic" section has flowchart blocks: Decision / condition (an amber diamond, for branches: connect two arrows out of it and label them "yes" and "no"), Start / end, Process / step, Loop / retry, Fork / join, Timer / schedule and Event / trigger. |
 | Networking | The "Networking" section has HTTP, REST API, WebSocket (two-way), Server-sent events (one-way stream) and Webhook, for labelling how components talk to each other. |
+| AI components | The "AI" section has AI model / agent, LLM, Agent / orchestrator, RAG pipeline, Embedding model, Retriever / reranker, Prompt / template, Guardrails, Tool / function call, Agent memory and MCP server. |
+| Two way arrows | Select an arrow and tick "Arrow heads at both ends" for a two way link. Flowing dots travel both ways. |
+| Auto-rotate | The Auto button (or R) keeps turning the 3D board. It pauses while you hold the pointer down. |
 | Text boxes | Press `X` or click **Text**, then click the floor. Type the caption (Enter starts a new line). Drag to move. The right panel sets the size (small, medium, large) and draws an optional box around it. Text boxes always face you, in 2D and 3D, and appear in the PNG. Arrows connect components, not text. |
 | Remove all | **Clear** in the toolbar removes every component, arrow and text box after a confirmation. It keeps the board title and the step list, and Cmd/Ctrl+Z brings everything back. **New** also resets the title and steps and cannot be undone. |
 | Edit | Select a tile, arrow or text box. The right panel edits name, type, position, arrow label, step badge, key path, dashed. Double click renames. |
@@ -84,7 +87,7 @@ tiles are dropped on load.
 TypeScript, Vite and Three.js. No UI framework. Three layers, each usable without the one above it:
 
 - `src/model/` has the document, selection and undo history (snapshot based), and file parsing. No DOM, no Three.js.
-- `src/glyphs/` has the components: `models.ts` builds the 39 3D models from primitives, `flatIcons.ts` holds the original 2D drawings,
+- `src/glyphs/` has the components: `models.ts` builds the 49 3D models from primitives, `flatIcons.ts` holds the original 2D drawings,
   and `thumbs.ts` renders the palette and legend pictures.
 - `functions/_middleware.js` is the server-side passphrase gate, and `gate-tests/` tests it.
 - `src/scene/` has the 3D view. `routing.ts` and `labels.ts` are pure and unit tested: they route arrows

@@ -53,7 +53,7 @@ function boot(): void {
   const store = new Store(loadInitialDoc());
   const stage = h("main", { class: "stage" });
   const emptyHint = h("div", { class: "empty" }, h("strong", {}, "An empty board"), h("span", {}, "Pick a component on the left and click the floor, or load the example from the toolbar."));
-  const hints = h("div", { class: "hints" }, "Drag to pan · Wheel to zoom · Q / E rotate · T switches 2D and 3D · Space + drag also pans");
+  const hints = h("div", { class: "hints" }, "Drag to pan · Wheel to zoom · Q / E rotate · R auto-rotates · T switches 2D and 3D · Space + drag also pans");
 
   let view: SceneView;
   try {
@@ -120,6 +120,12 @@ function boot(): void {
         toast(e instanceof Error ? e.message : "Could not export the image.", "error");
       }
     },
+    toggleAutoRotate() {
+      if (mode !== "3d") { toast("Auto-rotate works in the 3D view. Press T to switch."); return; }
+      view.setAutoRotate(!view.autoRotate);
+      toolbar.refresh(readTheme().dark, mode);
+      toast(view.autoRotate ? "Auto-rotate on. Press R to stop." : "Auto-rotate off.");
+    },
     toggleTheme() {
       toggleTheme();
       applyTheme();
@@ -167,6 +173,7 @@ function boot(): void {
   };
   store.subscribe(refreshAll);
   controller.onModeChange = () => { toolbar.refresh(readTheme().dark, mode); palette.refresh(); };
+  controller.onToggleAutoRotate = () => files.toggleAutoRotate();
   controller.onToggleMode = () => files.setMode(mode === "3d" ? "2d" : "3d");
   controller.onFocusLabel = () => inspector.focusLabel();
 

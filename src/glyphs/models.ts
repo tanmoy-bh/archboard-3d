@@ -630,6 +630,151 @@ const BUILD: Record<IconKey, () => Glyph3D> = {
     g.add(spin);
     return { group: g, tick: (t) => { spin.rotation.y = t * 0.45; } };
   },
+
+  // ---------------------------------------------------------------- AI components
+
+  /** LLM: a chat bubble with a tail, the letters LLM and three thinking dots. */
+  llm() {
+    const g = new THREE.Group();
+    cyl(g, 0.5, 0.52, 0.05, "#2f3796", 0, 0, 0);
+    box(g, 1.2, 0.72, 0.3, "#5865f2", 0, 0.4, 0, { r: 0.14 });
+    const tail = mesh(g, new THREE.ConeGeometry(0.17, 0.26, 4), material("#5865f2"), -0.34, 0.3, 0);
+    tail.rotation.set(Math.PI, Math.PI / 4, 0); // apex points down at the pad
+    plaque(g, "LLM", "#ffffff", 0.72, 0, 0.86, 0.156);
+    const dots = [-0.17, 0, 0.17].map((x) => ball(g, 0.05, "#ffffff", x, 0.6, 0.16, { emissive: "#dfe3ff", ei: 0.8 }));
+    return { group: g, tick: (t) => dots.forEach((d, i) => { d.position.y = 0.6 + Math.max(0, Math.sin(t * 4 - i * 0.9)) * 0.06; }) };
+  },
+
+  /** Agent / orchestrator: a friendly robot head with an antenna that pulses. */
+  agent() {
+    const g = new THREE.Group();
+    box(g, 0.7, 0.4, 0.5, "#168a9b", 0, 0.04, 0, { r: 0.08 });
+    box(g, 0.94, 0.6, 0.7, "#1fb6c9", 0, 0.46, 0, { r: 0.14 });
+    for (const x of [-0.21, 0.21]) {
+      ball(g, 0.085, "#ffffff", x, 0.78, 0.35, { emissive: "#c8f7ff", ei: 0.9 });
+      ball(g, 0.04, "#0d3d46", x, 0.78, 0.425, { rough: 0.3 });
+    }
+    box(g, 0.34, 0.05, 0.02, "#0d3d46", 0, 0.58, 0.355, { r: 0.012 });
+    for (const x of [-0.54, 0.54]) {
+      const ear = cyl(g, 0.11, 0.11, 0.12, "#168a9b", x, 0.62, 0);
+      ear.rotation.z = Math.PI / 2;
+    }
+    between(g, [0, 1.06, 0], [0, 1.28, 0], 0.025, "#0d3d46");
+    const tip = ball(g, 0.08, "#ffb020", 0, 1.34, 0, { emissive: "#ff9d00", ei: 0.9 });
+    return { group: g, tick: (t) => tip.scale.setScalar(1 + Math.sin(t * 4) * 0.18) };
+  },
+
+  /** RAG pipeline: a document with a magnifying glass over it. */
+  rag() {
+    const g = new THREE.Group();
+    cyl(g, 0.62, 0.64, 0.06, "#7a2a8a", 0, 0, 0);
+    box(g, 0.64, 0.82, 0.06, "#ffffff", -0.2, 0.08, -0.02, { r: 0.03, rough: 0.7 });
+    box(g, 0.64, 0.82, 0.04, "#e9d8f2", -0.14, 0.08, -0.07, { r: 0.03, rough: 0.7 });
+    plaque(g, "RAG", "#c13fd6", 0.46, -0.2, 0.72, 0.012);
+    [0.5, 0.4, 0.3].forEach((y, i) => box(g, 0.44 - i * 0.08, 0.035, 0.012, "#b9a0c8", -0.26 + (-i * 0.04), y, 0.012, { r: 0.006 }));
+    torus(g, 0.25, 0.05, "#c13fd6", 0.2, 0.44, 0.14, [0, 0, 0], Math.PI * 2, { metal: 0.3 });
+    cyl(g, 0.24, 0.24, 0.015, "#d9f2ff", 0.2, 0.44, 0.13, { opacity: 0.35, rough: 0.1 }).rotation.x = Math.PI / 2;
+    between(g, [0.38, 0.26, 0.14], [0.58, 0.08, 0.14], 0.06, "#8a2a9c");
+    return { group: g };
+  },
+
+  /** Embedding model: three axes of a vector space with a few points floating in it. */
+  embed() {
+    const g = new THREE.Group();
+    cyl(g, 0.62, 0.64, 0.05, "#8a5200", 0, 0, 0);
+    const o: V3 = [-0.3, 0.1, 0.22];
+    arrow(g, o, [0.5, 0.1, 0.22], 0.022, "#c77a12", 0.15);
+    arrow(g, o, [-0.3, 1.0, 0.22], 0.022, "#c77a12", 0.15);
+    arrow(g, o, [-0.3, 0.1, -0.5], 0.022, "#c77a12", 0.15);
+    const pts: V3[] = [[0.12, 0.62, 0.02], [0.28, 0.45, 0.14], [-0.02, 0.85, -0.06], [0.18, 0.78, 0.1]];
+    const balls = pts.map((p) => {
+      between(g, o, p, 0.008, "#e3b25c");
+      return ball(g, 0.065, "#fbbf24", p[0], p[1], p[2], { emissive: "#ffb000", ei: 0.6 });
+    });
+    return { group: g, tick: (t) => balls.forEach((b, i) => { b.position.y = pts[i][1] + Math.sin(t * 1.7 + i * 1.5) * 0.035; }) };
+  },
+
+  /** Retriever / reranker: ranked bars, tallest first, with a crown on the best match. */
+  retriever() {
+    const g = new THREE.Group();
+    box(g, 1.3, 0.1, 0.56, "#9c2543", 0, 0, 0, { r: 0.04 });
+    [0.9, 0.68, 0.48, 0.32].forEach((h, i) => box(g, 0.24, h, 0.34, ["#f43f5e", "#f2627a", "#f48ca0", "#f7b3c0"][i], -0.43 + i * 0.29, 0.1, -0.02, { r: 0.04 }));
+    const star = ball(g, 0.075, "#ffd24d", -0.43, 1.12, -0.02, { emissive: "#ffb800", ei: 0.9 });
+    plaque(g, "TOP-K", "#ffffff", 0.5, 0.18, 0.05, 0.285);
+    return { group: g, tick: (t) => { star.position.y = 1.12 + Math.sin(t * 2.4) * 0.04; } };
+  },
+
+  /** Prompt / template: a card with a header, text lines and a blinking cursor. */
+  prompt() {
+    const g = new THREE.Group();
+    cyl(g, 0.5, 0.52, 0.05, "#0d6b4d", 0, 0, 0);
+    box(g, 1.04, 0.86, 0.12, "#20b486", 0, 0.1, 0, { r: 0.06 });
+    box(g, 0.94, 0.14, 0.02, "#0f7f5c", 0, 0.82, 0.065, { r: 0.01 });
+    plaque(g, "PROMPT", "#ffffff", 0.78, 0, 0.6, 0.066);
+    box(g, 0.74, 0.04, 0.012, "#d8fff0", -0.04, 0.4, 0.066, { r: 0.006 });
+    box(g, 0.5, 0.04, 0.012, "#d8fff0", -0.16, 0.3, 0.066, { r: 0.006 });
+    const cursor = box(g, 0.07, 0.11, 0.012, "#ffffff", 0.14, 0.2, 0.066, { r: 0.006, emissive: "#ffffff", ei: 0.8 });
+    return { group: g, tick: (t) => { cursor.visible = Math.sin(t * 5) > -0.2; } };
+  },
+
+  /** Guardrails: a shield with a check mark. */
+  guard() {
+    const g = new THREE.Group();
+    cyl(g, 0.5, 0.52, 0.05, "#1c3f8f", 0, 0, 0);
+    const s = new THREE.Shape();
+    s.moveTo(0, 1.28);
+    s.lineTo(0.5, 1.12);
+    s.lineTo(0.5, 0.7);
+    s.quadraticCurveTo(0.46, 0.3, 0, 0.1);
+    s.quadraticCurveTo(-0.46, 0.3, -0.5, 0.7);
+    s.lineTo(-0.5, 1.12);
+    s.closePath();
+    const geo = new THREE.ExtrudeGeometry(s, { depth: 0.14, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 });
+    geo.translate(0, 0, -0.07);
+    mesh(g, geo, material("#3a6fd8", { rough: 0.35, metal: 0.15 }));
+    between(g, [-0.2, 0.68, 0.105], [-0.06, 0.52, 0.105], 0.05, "#ffffff", { emissive: "#dbe6ff", ei: 0.6 });
+    between(g, [-0.06, 0.52, 0.105], [0.22, 0.88, 0.105], 0.05, "#ffffff", { emissive: "#dbe6ff", ei: 0.6 });
+    return { group: g };
+  },
+
+  /** Tool / function call: a wrench with a bolt. */
+  tools() {
+    const g = new THREE.Group();
+    cyl(g, 0.62, 0.64, 0.05, "#475569", 0, 0, 0);
+    const w = new THREE.Group();
+    box(w, 0.2, 0.8, 0.14, "#94a3b8", 0, 0.05, 0, { r: 0.07, metal: 0.7, rough: 0.35 });
+    const head = torus(w, 0.2, 0.09, "#94a3b8", 0, 0.98, 0, [0, 0, 2.27], Math.PI * 2 - 1.4, { metal: 0.7, rough: 0.35 });
+    head.scale.z = 1.4; // thicker than the shaft so it reads as a solid jaw
+    w.position.set(-0.16, 0.06, 0);
+    w.rotation.z = 0.4;
+    g.add(w);
+    const bolt = mesh(g, new THREE.CylinderGeometry(0.2, 0.2, 0.16, 6), material("#f59e0b", { metal: 0.5, rough: 0.35 }), 0.42, 0.26, 0.1);
+    bolt.rotation.x = Math.PI / 2;
+    return { group: g, tick: (t) => { bolt.rotation.y = t * 0.8; } };
+  },
+
+  /** Agent memory: a memory module in its slot, with a thought bubble trail rising from it. */
+  memory() {
+    const g = new THREE.Group();
+    box(g, 1.4, 0.14, 0.26, "#2b2f38", 0, 0, 0, { r: 0.04 });
+    box(g, 1.3, 0.56, 0.1, "#1f9d6a", 0, 0.14, 0, { r: 0.03 });
+    [-0.45, -0.15, 0.15, 0.45].forEach((x) => box(g, 0.24, 0.28, 0.04, "#1b1f27", x, 0.3, 0.06, { r: 0.015 }));
+    for (let i = -6; i <= 6; i++) box(g, 0.06, 0.09, 0.11, "#e6c04a", i * 0.095, 0.06, 0, { r: 0.008, metal: 0.8, rough: 0.3 });
+    const dots = ([[0.22, 0.95, 0.065], [0.36, 1.12, 0.09], [0.52, 1.3, 0.12]] as const).map(([x, y, r]) => ball(g, r, "#9bf0c9", x, y, 0, { emissive: "#4be3a2", ei: 0.5 }));
+    return { group: g, tick: (t) => dots.forEach((d, i) => d.scale.setScalar(1 + Math.sin(t * 2.4 - i * 0.7) * 0.12)) };
+  },
+
+  /** MCP server: a server box with a plug connecting in from above. */
+  mcp() {
+    const g = new THREE.Group();
+    box(g, 0.96, 0.7, 0.7, "#475569", 0, 0.05, 0, { r: 0.08 });
+    plaque(g, "MCP", "#ffffff", 0.6, 0, 0.36, 0.352);
+    [-0.3, -0.18].forEach((x, i) => ball(g, 0.035, i ? "#38bdf8" : "#7dff9a", x, 0.62, 0.355, { emissive: i ? "#38bdf8" : "#7dff9a", ei: 1.2 }));
+    cyl(g, 0.06, 0.06, 0.1, "#1e293b", 0, 0.75, 0);
+    const plug = box(g, 0.5, 0.28, 0.3, "#334155", 0, 0.85, 0, { r: 0.06 });
+    for (const x of [-0.12, 0.12]) box(g, 0.07, 0.22, 0.05, "#e6c04a", x, 1.13, 0, { r: 0.01, metal: 0.8, rough: 0.3 });
+    return { group: g, tick: (t) => { plug.position.y = 0.99 + Math.max(0, Math.sin(t * 2.2)) * 0.03; } };
+  },
 };
 
 /**

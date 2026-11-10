@@ -10,6 +10,9 @@ export const ICON_NAMES: Record<IconKey, string> = {
   apps: "SaaS apps", box: "Sandbox", globe: "External site", decision: "Decision / condition",
   startend: "Start / end", process: "Process / step", loop: "Loop / retry", fork: "Fork / join",
   timer: "Timer / schedule", trigger: "Event / trigger",
+  llm: "LLM", agent: "Agent / orchestrator", rag: "RAG pipeline", embed: "Embedding model",
+  retriever: "Retriever / reranker", prompt: "Prompt / template", guard: "Guardrails",
+  tools: "Tool / function call", memory: "Agent memory", mcp: "MCP server",
   http: "HTTP", rest: "REST API", websocket: "WebSocket", sse: "Server-sent events", webhook: "Webhook",
 };
 
@@ -17,10 +20,11 @@ export const ICON_NAMES: Record<IconKey, string> = {
 export const PALETTE_GROUPS: { title: string; icons: IconKey[] }[] = [
   { title: "Clients", icons: ["phone", "laptop", "person", "globe", "apps"] },
   { title: "Edge", icons: ["cdn", "gateway", "filter", "lock"] },
-  { title: "Compute", icons: ["svc", "server", "box", "ai"] },
+  { title: "Compute", icons: ["svc", "server", "box"] },
   { title: "Data", icons: ["db", "redis", "es", "vector", "blob", "graph", "ring", "doc"] },
   { title: "Messaging", icons: ["queue", "bell", "mail", "sms"] },
   { title: "Logic", icons: ["decision", "startend", "process", "loop", "fork", "timer", "trigger"] },
   { title: "Networking", icons: ["http", "rest", "websocket", "sse", "webhook"] },
+  { title: "AI", icons: ["ai", "llm", "agent", "rag", "embed", "retriever", "prompt", "guard", "tools", "memory", "mcp"] },
   { title: "Other", icons: ["card", "chart"] },
 ];

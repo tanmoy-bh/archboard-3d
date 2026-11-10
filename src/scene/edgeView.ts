@@ -54,7 +54,7 @@ export class EdgeView {
     this.data = data;
     this.route = route;
     this.anchor = anchor;
-    const key = JSON.stringify([route.pts, anchor.at, data.label ?? "", data.step ?? 0, !!data.hot, !!data.dash]);
+    const key = JSON.stringify([route.pts, anchor.at, data.label ?? "", data.step ?? 0, !!data.hot, !!data.dash, !!data.both]);
     if (key === this.key) return;
     this.key = key;
     this.rebuild();
@@ -85,10 +85,12 @@ export class EdgeView {
     const smooth = roundPath(corners);
     this.path = makePolyline(smooth);
 
-    // Stop the line a little short of the tip so the arrow head sits on the end cleanly.
-    const lineLen = Math.max(0, this.path.len - 0.16);
-    const lineStrip: V[] = [];
-    for (let i = 0; i < smooth.length; i++) if (this.path.cum[i] < lineLen) lineStrip.push(smooth[i]);
+    // Stop the line a little short of each tip so the arrow heads sit on the ends cleanly.
+    const both = !!this.data.both;
+    const lineStart = both ? Math.min(0.16, this.path.len / 3) : 0;
+    const lineLen = Math.max(lineStart, this.path.len - 0.16);
+    const lineStrip: V[] = [pointAt(this.path, lineStart)];
+    for (let i = 0; i < smooth.length; i++) if (this.path.cum[i] > lineStart && this.path.cum[i] < lineLen) lineStrip.push(smooth[i]);
     lineStrip.push(pointAt(this.path, lineLen));
     const positions = lineStrip.flatMap(([x, z]) => [x, EDGE_Y, z]);
 
@@ -117,20 +119,25 @@ export class EdgeView {
     this.line = mk(this.data.hot ? 3.2 : 2.2, this.colorHex(), 1, !!this.data.dash);
     this.group.add(this.glow, this.line);
 
-    // arrow head
+    // arrow head at the end, and a second one at the start for a two way link
+    const verts: number[] = [];
+    const head = (tip: V, from: V): void => {
+      let dx = tip[0] - from[0], dz = tip[1] - from[1];
+      const dl = Math.hypot(dx, dz) || 1;
+      dx /= dl; dz /= dl;
+      const L = 0.3, W = 0.15;
+      const bx = tip[0] - dx * L, bz = tip[1] - dz * L;
+      verts.push(
+        tip[0], EDGE_Y + 0.004, tip[1],
+        bx - dz * W, EDGE_Y + 0.004, bz + dx * W,
+        bx + dz * W, EDGE_Y + 0.004, bz - dx * W,
+      );
+    };
     const n = this.path.pts.length;
-    const tip = this.path.pts[n - 1], prev = pointAt(this.path, Math.max(0, this.path.len - 0.3));
-    let dx = tip[0] - prev[0], dz = tip[1] - prev[1];
-    const dl = Math.hypot(dx, dz) || 1;
-    dx /= dl; dz /= dl;
-    const L = 0.3, W = 0.15;
-    const bx = tip[0] - dx * L, bz = tip[1] - dz * L;
+    head(this.path.pts[n - 1], pointAt(this.path, Math.max(0, this.path.len - 0.3)));
+    if (both) head(this.path.pts[0], pointAt(this.path, Math.min(this.path.len, 0.3)));
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.Float32BufferAttribute([
-      tip[0], EDGE_Y + 0.004, tip[1],
-      bx - dz * W, EDGE_Y + 0.004, bz + dx * W,
-      bx + dz * W, EDGE_Y + 0.004, bz - dx * W,
-    ], 3));
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
     this.arrow = new THREE.Mesh(geo, this.arrowMat);
     this.arrow.renderOrder = 4;
     this.group.add(this.arrow);
@@ -196,7 +203,9 @@ export class EdgeView {
     const spacing = len / n;
     const off = (t * FLOW_SPEED) % spacing;
     for (let i = 0; i < n; i++) {
-      const d = Math.min(len - 0.2, off + i * spacing);
+      const fwd = Math.min(len - 0.2, off + i * spacing);
+      // On a two way link every other dot travels the opposite way.
+      const d = this.data.both && i % 2 === 1 ? len - fwd : fwd;
       const p = pointAt(this.path, d);
       // fade dots in near the start and out near the arrow head
       this.dots[i].position.set(p[0], EDGE_Y + 0.05, p[1]);
