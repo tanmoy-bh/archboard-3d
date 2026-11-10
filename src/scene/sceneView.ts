@@ -5,6 +5,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Store } from "../model/store";
 import type { IconKey } from "../model/types";
 import { Theme } from "../theme";
+import { encodeGif } from "../export/gif";
 import { ELEVATION, FRUSTUM_H, HALF, METRICS, PXW, SP, ViewMode, elevationOf, snapAzimuth } from "./constants";
 import { EdgeView } from "./edgeView";
 import { EdgeSpec, TileSpec, placeLabels } from "./labels";
@@ -125,6 +126,7 @@ export class SceneView {
   resizeNow(): void { this.resize(); }
 
   private resize(): void {
+    if (this.exporting) return; // the export puts the size back when it is done
     const w = Math.max(1, this.container.clientWidth), h = Math.max(1, this.container.clientHeight);
     this.size.set(w, h);
     this.renderer.setSize(w, h);
@@ -254,29 +256,40 @@ export class SceneView {
     this.target.z += r3[1] * dr + (fwd[1] * du) / Math.sin(e);
   }
 
+  /** Middle of everything on the board, on the ground plane. Null when the board is empty. */
+  private groundCentre(): { x: number; z: number } | null {
+    const { nodes, texts } = this.store.doc;
+    if (nodes.length === 0 && texts.length === 0) return null;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    const grow = (x: number, z: number) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
+    for (const n of nodes) { grow(n.gx * SP - HALF, n.gy * SP - HALF); grow(n.gx * SP + HALF, n.gy * SP + HALF); }
+    for (const t of texts) grow(t.gx * SP, t.gy * SP);
+    return { x: (x0 + x1) / 2, z: (z0 + z1) / 2 };
+  }
+
+  /** How far the board reaches right and up of `centre` on screen, taking the worst case over the view angles. */
+  private extentAround(centre: { x: number; z: number }, azimuths: number[], e: number): { hr: number; hu: number } {
+    let hr = 0, hu = 0;
+    for (const az of azimuths) {
+      const b = this.boardBounds(az, e);
+      if (!b) continue;
+      const rT = centre.x * Math.cos(az) - centre.z * Math.sin(az);
+      const uT = -Math.sin(e) * (centre.x * Math.sin(az) + centre.z * Math.cos(az));
+      hr = Math.max(hr, b.maxR - rT, rT - b.minR);
+      hu = Math.max(hu, b.maxU - uT, uT - b.minU);
+    }
+    return { hr, hu };
+  }
+
   /**
    * Centre on the middle of the board and zoom so it stays on screen from every angle, for auto-rotate.
    * The board turns about the centre, so the fit is taken over a full turn instead of the current angle.
    */
   private fitForSpin(): void {
-    const { nodes, texts } = this.store.doc;
-    if (nodes.length === 0 && texts.length === 0) { this.target.set(0, 0, 0); this.updateCamera(); return; }
-    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-    const grow = (x: number, z: number) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
-    for (const n of nodes) { grow(n.gx * SP - HALF, n.gy * SP - HALF); grow(n.gx * SP + HALF, n.gy * SP + HALF); }
-    for (const t of texts) grow(t.gx * SP, t.gy * SP);
-    this.target.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
-    const e = this.elevTarget;
-    let hr = 0, hu = 0;
-    for (let i = 0; i < 24; i++) {
-      const az = (i / 24) * Math.PI * 2;
-      const b = this.boardBounds(az, e);
-      if (!b) continue;
-      const rT = this.target.x * Math.cos(az) - this.target.z * Math.sin(az);
-      const uT = -Math.sin(e) * (this.target.x * Math.sin(az) + this.target.z * Math.cos(az));
-      hr = Math.max(hr, b.maxR - rT, rT - b.minR);
-      hu = Math.max(hu, b.maxU - uT, uT - b.minU);
-    }
+    const c = this.groundCentre();
+    if (!c) { this.target.set(0, 0, 0); this.updateCamera(); return; }
+    this.target.set(c.x, 0, c.z);
+    const { hr, hu } = this.extentAround(c, Array.from({ length: 24 }, (_, i) => (i / 24) * Math.PI * 2), this.elevTarget);
     const aspect = this.size.x / this.size.y;
     const w = hr * 2 + 4, h = hu * 2 + 4;
     this.zoom = Math.min(2, Math.max(MIN_ZOOM, Math.min((FRUSTUM_H * aspect) / w, FRUSTUM_H / h)));
@@ -480,6 +493,7 @@ export class SceneView {
   // ------------------------------------------------------------------- loop
 
   private frame(): void {
+    if (this.exporting) { this.last = performance.now(); return; } // an export owns the canvas for now
     const now = performance.now();
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
@@ -555,9 +569,81 @@ export class SceneView {
       this.renderer.setSize(this.size.x, this.size.y);
       this.canvas.style.width = "100%";
       this.canvas.style.height = "100%";
+      this.exporting = false;
       this.resize();
       chrome(true);
+    }
+  }
+
+  /**
+   * Render an animated GIF of the board. In 3D the camera makes one full turn around it; in 2D the view
+   * stays still and only the flowing dots move. The framing fits the board from every angle, selection
+   * chrome and the grid are hidden, and the canvas is handed back exactly as it was.
+   */
+  async exportGif(opts: { seconds: number; fps: number; width: number; onProgress?: (done: number, total: number) => void }): Promise<Blob> {
+    const centre = this.groundCentre();
+    if (!centre) throw new Error("There is nothing on the board to export.");
+    const turn = this.mode === "3d";
+    const total = Math.max(2, Math.round(opts.seconds * opts.fps));
+    const e = this.elev;
+    const base = this.az;
+    const azimuths = Array.from({ length: total }, (_, i) => base + (turn ? (i / total) * Math.PI * 2 : 0));
+    const { hr, hu } = this.extentAround(centre, azimuths, e);
+    const margin = 1.3;
+    const bw = hr * 2 + margin * 2, bh = hu * 2 + margin * 2;
+    const W = Math.round(opts.width), H = Math.max(2, Math.round((W * bh) / bw));
+
+    const saved = { target: this.target.clone(), zoom: this.zoom, az: this.az, pr: this.renderer.getPixelRatio() };
+    const chrome = (v: boolean) => {
+      for (const n of this.nodes.values()) n.setChromeVisible(v);
+      for (const ed of this.edges.values()) ed.setChromeVisible(v);
+      for (const t of this.texts.values()) t.setChromeVisible(v);
+      if (this.ghost) this.ghost.group.visible = v;
+      if (this.rubber) this.rubber.visible = v;
+      this.grid.visible = v;
+    };
+    const frames: Uint8ClampedArray[] = [];
+    this.exporting = true;
+    try {
+      chrome(false);
+      this.target.set(centre.x, 0, centre.z);
+      this.zoom = 1;
+      this.camera.left = -bw / 2; this.camera.right = bw / 2; this.camera.top = bh / 2; this.camera.bottom = -bh / 2;
+      this.renderer.setPixelRatio(1);
+      this.renderer.setSize(W, H, false);
+      const onScreen = (this.size.y / FRUSTUM_H) * saved.zoom;
+      const s = W / bw / onScreen; // keep stroke weights the same as on screen
+      for (const ed of this.edges.values()) ed.setResolution(W / s, H / s);
+
+      const copy = document.createElement("canvas");
+      copy.width = W; copy.height = H;
+      const c2 = copy.getContext("2d", { willReadFrequently: true });
+      if (!c2) throw new Error("This browser cannot read the canvas, so a GIF cannot be made.");
+      for (let i = 0; i < total; i++) {
+        const t = i / opts.fps;
+        this.az = azimuths[i];
+        this.updateCamera();
+        for (const n of this.nodes.values()) n.tick(t, 1 / opts.fps, this.az);
+        for (const ed of this.edges.values()) ed.tick(t);
+        this.renderer.render(this.scene, this.camera);
+        c2.drawImage(this.canvas, 0, 0); // straight after render, while the frame is still in the buffer
+        frames.push(c2.getImageData(0, 0, W, H).data);
+        opts.onProgress?.(i + 1, total * 2);
+        await new Promise<void>((r) => setTimeout(r, 0)); // let the progress message paint
+      }
+      const bytes = await encodeGif(frames, W, H, opts.fps, (done) => opts.onProgress?.(total + done, total * 2));
+      return new Blob([bytes as BlobPart], { type: "image/gif" });
+    } finally {
+      this.target.copy(saved.target);
+      this.zoom = saved.zoom;
+      this.az = saved.az;
+      this.renderer.setPixelRatio(saved.pr);
+      this.renderer.setSize(this.size.x, this.size.y);
+      this.canvas.style.width = "100%";
+      this.canvas.style.height = "100%";
       this.exporting = false;
+      this.resize();
+      chrome(true);
     }
   }
 

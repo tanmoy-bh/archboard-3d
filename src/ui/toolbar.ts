@@ -9,6 +9,7 @@ export interface FileActions {
   openBoard(): void;
   saveBoard(): void;
   exportPng(): void;
+  exportGif(): void;
   loadExample(): void;
   toggleTheme(): void;
   toggleAutoRotate(): void;
@@ -79,6 +80,7 @@ export class Toolbar {
       btn("open", "Open a board from a JSON file", files.openBoard, "Open"),
       btn("save", "Save the board as a JSON file", files.saveBoard, "Save"),
       btn("image", "Export a PNG image", files.exportPng, "PNG"),
+      btn("film", "Export an animated GIF: one full turn of the board in 3D, or a short loop in 2D", files.exportGif, "GIF"),
       sep(),
       this.themeBtn,
       // The deployed site is gated on the server; this signs you out of it. There is no gate in local dev.

@@ -65,6 +65,7 @@ function boot(): void {
   }
 
   let mode: ViewMode = loadMode();
+  let gifBusy = false;
   view.setMode(mode, false);
 
   const controller = new Controller(view, store);
@@ -119,6 +120,32 @@ function boot(): void {
         toast("PNG exported.");
       } catch (e) {
         toast(e instanceof Error ? e.message : "Could not export the image.", "error");
+      }
+    },
+    async exportGif() {
+      if (gifBusy) return;
+      gifBusy = true;
+      const text = h("p", {}, "Starting");
+      const bar = h("progress", { max: 100, value: 0 });
+      const overlay = h("div", { class: "busy", role: "alert" }, h("div", { class: "busy-card" }, h("strong", {}, "Making your GIF"), text, bar, h("span", { class: "muted" }, "Rendering frames, then packing them. Please wait.")));
+      document.body.append(overlay);
+      const block = (e: KeyboardEvent) => { e.stopImmediatePropagation(); e.preventDefault(); };
+      window.addEventListener("keydown", block, true); // keep shortcuts from editing the board mid-export
+      try {
+        const blob = await view.exportGif({
+          seconds: mode === "3d" ? 5 : 3, fps: 12, width: 640,
+          onProgress: (done, total) => { bar.value = Math.round((done / total) * 100); text.textContent = done <= total / 2 ? `Rendering frame ${done} of ${total / 2}` : "Packing the GIF"; },
+        });
+        const url = URL.createObjectURL(blob);
+        download(`${slug(store.doc.title)}.gif`, url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast(`GIF exported (${(blob.size / 1048576).toFixed(1)} MB).`);
+      } catch (e) {
+        toast(e instanceof Error ? e.message : "Could not make the GIF.", "error");
+      } finally {
+        window.removeEventListener("keydown", block, true);
+        overlay.remove();
+        gifBusy = false;
       }
     },
     toggleAutoRotate() {
