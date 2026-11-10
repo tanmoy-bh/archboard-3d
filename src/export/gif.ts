@@ -39,6 +39,27 @@ export async function writeGif(
   return gif.bytes();
 }
 
+/**
+ * Streaming writer: each frame is packed into the file as soon as it is rendered, so a long, large clip
+ * never holds raw frames in memory. All frames share the one palette.
+ */
+export function createGifWriter(palette: Palette, width: number, height: number, fps: number) {
+  const gif = GIFEncoder();
+  const delay = Math.round(1000 / fps);
+  let first = true;
+  return {
+    add(rgba: Uint8ClampedArray): void {
+      const index = applyPalette(rgba, palette);
+      gif.writeFrame(index, width, height, first ? { palette, delay, repeat: 0 } : { delay });
+      first = false;
+    },
+    finish(): Uint8Array {
+      gif.finish();
+      return gif.bytes();
+    },
+  };
+}
+
 /** Convenience for whole clips held as RGBA frames: palette from three spread frames, then write. */
 export async function encodeGif(
   frames: Uint8ClampedArray[],

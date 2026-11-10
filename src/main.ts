@@ -127,14 +127,14 @@ function boot(): void {
       gifBusy = true;
       const text = h("p", {}, "Starting");
       const bar = h("progress", { max: 100, value: 0 });
-      const overlay = h("div", { class: "busy", role: "alert" }, h("div", { class: "busy-card" }, h("strong", {}, "Making your GIF"), text, bar, h("span", { class: "muted" }, "Rendering frames, then packing them. Please wait.")));
+      const overlay = h("div", { class: "busy", role: "alert" }, h("div", { class: "busy-card" }, h("strong", {}, "Making your GIF"), text, bar, h("span", { class: "muted" }, "Please wait, large GIFs take a minute.")));
       document.body.append(overlay);
       const block = (e: KeyboardEvent) => { e.stopImmediatePropagation(); e.preventDefault(); };
       window.addEventListener("keydown", block, true); // keep shortcuts from editing the board mid-export
       try {
         const blob = await view.exportGif({
-          stillSeconds: 3, stillFps: 12, turnFps: 10, width: 640,
-          onProgress: (done, total) => { bar.value = Math.round((done / total) * 100); text.textContent = done <= total / 2 ? `Rendering frame ${done} of ${total / 2}` : "Packing the GIF"; },
+          stillSeconds: 3, stillFps: 12, turnFps: 8, width: 1200,
+          onProgress: (done, total) => { bar.value = Math.round((done / total) * 100); text.textContent = `Rendering frame ${done} of ${total}`; },
         });
         const url = URL.createObjectURL(blob);
         download(`${slug(store.doc.title)}.gif`, url);

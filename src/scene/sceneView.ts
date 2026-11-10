@@ -5,7 +5,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Store } from "../model/store";
 import type { IconKey } from "../model/types";
 import { Theme } from "../theme";
-import { indexFrame, makePalette, writeGif } from "../export/gif";
+import { createGifWriter, makePalette } from "../export/gif";
 import { ELEVATION, FRUSTUM_H, HALF, METRICS, PXW, SP, ViewMode, elevationOf, snapAzimuth } from "./constants";
 import { EdgeView } from "./edgeView";
 import { EdgeSpec, TileSpec, placeLabels } from "./labels";
@@ -605,7 +605,6 @@ export class SceneView {
       if (this.rubber) this.rubber.visible = v;
       this.grid.visible = v;
     };
-    const frames: Uint8Array[] = [];
     this.exporting = true;
     try {
       chrome(false);
@@ -632,15 +631,17 @@ export class SceneView {
         c2.drawImage(this.canvas, 0, 0); // straight after render, while the frame is still in the buffer
         return c2.getImageData(0, 0, W, H).data;
       };
-      // One shared palette from three frames spread through the clip, then each frame is stored as palette
-      // indices as it is rendered. That keeps a long clip to a quarter of the memory of raw pixels.
-      const palette = makePalette([0, Math.floor(total / 3), Math.floor((2 * total) / 3)].map(capture));
+      // One shared palette from six frames spread through the clip (so colours do not shift or flicker),
+      // then every frame is packed into the file straight after it is rendered.
+      const picks = [0, 1, 2, 3, 4, 5].map((k) => Math.floor((k * total) / 6));
+      const palette = makePalette(picks.map(capture));
+      const writer = createGifWriter(palette, W, H, fps);
       for (let i = 0; i < total; i++) {
-        frames.push(indexFrame(capture(i), palette));
-        opts.onProgress?.(i + 1, total * 2);
-        if (i % 4 === 3) await new Promise<void>((r) => setTimeout(r, 0)); // let the progress message paint
+        writer.add(capture(i));
+        opts.onProgress?.(i + 1, total);
+        if (i % 2 === 1) await new Promise<void>((r) => setTimeout(r, 0)); // let the progress message paint
       }
-      const bytes = await writeGif(frames, palette, W, H, fps, (done) => opts.onProgress?.(total + done, total * 2));
+      const bytes = writer.finish();
       return new Blob([bytes as BlobPart], { type: "image/gif" });
     } finally {
       this.target.copy(saved.target);
