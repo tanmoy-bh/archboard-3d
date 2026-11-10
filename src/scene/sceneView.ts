@@ -19,8 +19,6 @@ const MAX_ZOOM = 4;
 /** Owns the Three.js scene: camera, lights, floor, and one view object per node and edge. */
 /** Auto-rotate speed in radians per second (a full turn takes about 42 seconds). */
 const AUTO_ROTATE_SPEED = 0.15;
-/** Re-place edge labels after the view has turned this far (radians, about 10 degrees). */
-const LABEL_RESYNC = 0.17;
 
 export class SceneView {
   readonly canvas: HTMLCanvasElement;
@@ -49,7 +47,7 @@ export class SceneView {
   private azTarget = Math.PI / 4;
   private spin = false; // auto-rotate switched on
   private spinHold = false; // paused while the pointer is down so dragging stays steady
-  private labelAz = Math.PI / 4; // the view angle edge labels were last placed for
+  private spinLabelAz = Math.PI / 4; // the view angle labels are placed for while auto-rotate runs, so they never jump
   private zoom = 1;
   private target = new THREE.Vector3();
   private size = new THREE.Vector2(1, 1);
@@ -179,8 +177,9 @@ export class SceneView {
   get autoRotate(): boolean { return this.spin; }
   setAutoRotate(on: boolean): void {
     this.spin = on;
+    if (on) this.spinLabelAz = this.azTarget; // place labels once, here, and keep them while the board turns
     if (on && this.mode === "3d") this.fitForSpin();
-    else if (!on) this.sync();
+    this.sync(); // re-place for the new mode: frozen angle when starting, the live angle when stopping
   }
   holdRotation(hold: boolean): void { this.spinHold = hold; }
 
@@ -439,8 +438,8 @@ export class SceneView {
       const pill = e.label ? tex.pill(e.label, !!e.hot) : null;
       specs.push({ id: e.id, pts: route.pts, pillW: pill ? pill.w * PXW : 0, pillH: pill ? pill.h * PXW : 0, badge: !!e.step });
     }
-    this.labelAz = this.spin ? this.az : this.azTarget;
-    const anchors = placeLabels(this.labelAz, this.elevTarget, tiles, specs, METRICS[this.mode]);
+    const labelAz = this.spin ? this.spinLabelAz : this.azTarget;
+    const anchors = placeLabels(labelAz, this.elevTarget, tiles, specs, METRICS[this.mode]);
     for (const e of doc.edges) {
       const route = routes.get(e.id);
       if (!route) continue;
@@ -505,8 +504,6 @@ export class SceneView {
       moved = true;
     }
     if (moved) this.updateCamera();
-    // Pills and badges are placed for one view angle, so re-place them every few degrees of spin.
-    if (this.spin && Math.abs(this.az - this.labelAz) > LABEL_RESYNC) this.sync();
     for (const n of this.nodes.values()) n.tick(t, dt, this.az);
     this.ghost?.tick(t, dt, this.az);
     for (const e of this.edges.values()) e.tick(t);

@@ -11,6 +11,7 @@ import { h } from "./ui/dom";
 import { Inspector } from "./ui/inspector";
 import { Legend } from "./ui/legend";
 import { Palette } from "./ui/palette";
+import { collapsible, panelHead, restorePanels } from "./ui/panels";
 import { StepsPanel } from "./ui/steps";
 import { Toolbar } from "./ui/toolbar";
 
@@ -146,8 +147,12 @@ function boot(): void {
   const toolbar = new Toolbar(store, controller, view, files);
 
   stage.append(legend.el, hints, emptyHint);
-  const right = h("aside", { class: "sidebar" }, inspector.el, steps.el);
-  app.append(toolbar.el, h("div", { class: "workspace" }, palette.el, stage, right));
+  collapsible(inspector.el, "sec:inspector");
+  collapsible(steps.el, "sec:steps");
+  const right = h("aside", { class: "sidebar", "aria-label": "Details" }, panelHead("Details", "panel:right", "Show details"), h("div", { class: "panel-body" }, inspector.el, steps.el));
+  const workspace = h("div", { class: "workspace" }, palette.el, stage, right);
+  app.append(toolbar.el, workspace);
+  restorePanels(workspace);
 
   function applyTheme(): void {
     const theme = readTheme();
