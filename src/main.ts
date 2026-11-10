@@ -133,7 +133,7 @@ function boot(): void {
       window.addEventListener("keydown", block, true); // keep shortcuts from editing the board mid-export
       try {
         const blob = await view.exportGif({
-          seconds: mode === "3d" && view.autoRotate ? 12 : 3, fps: 12, width: 640,
+          stillSeconds: 3, stillFps: 12, turnFps: 10, width: 640,
           onProgress: (done, total) => { bar.value = Math.round((done / total) * 100); text.textContent = done <= total / 2 ? `Rendering frame ${done} of ${total / 2}` : "Packing the GIF"; },
         });
         const url = URL.createObjectURL(blob);

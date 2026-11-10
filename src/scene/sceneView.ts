@@ -5,7 +5,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { Store } from "../model/store";
 import type { IconKey } from "../model/types";
 import { Theme } from "../theme";
-import { encodeGif } from "../export/gif";
+import { indexFrame, makePalette, writeGif } from "../export/gif";
 import { ELEVATION, FRUSTUM_H, HALF, METRICS, PXW, SP, ViewMode, elevationOf, snapAzimuth } from "./constants";
 import { EdgeView } from "./edgeView";
 import { EdgeSpec, TileSpec, placeLabels } from "./labels";
@@ -580,11 +580,14 @@ export class SceneView {
    * otherwise the view stays still and only the flowing dots and the models' idle motion move. The framing fits the board from every angle, selection
    * chrome and the grid are hidden, and the canvas is handed back exactly as it was.
    */
-  async exportGif(opts: { seconds: number; fps: number; width: number; onProgress?: (done: number, total: number) => void }): Promise<Blob> {
+  async exportGif(opts: { stillSeconds: number; stillFps: number; turnFps: number; width: number; onProgress?: (done: number, total: number) => void }): Promise<Blob> {
     const centre = this.groundCentre();
     if (!centre) throw new Error("There is nothing on the board to export.");
     const turn = this.mode === "3d" && this.spin; // the board only turns when Auto is on
-    const total = Math.max(2, Math.round(opts.seconds * opts.fps));
+    // A turn lasts as long as it does on screen with Auto on, so the GIF rotates at the same calm pace.
+    const fps = turn ? opts.turnFps : opts.stillFps;
+    const seconds = turn ? (Math.PI * 2) / AUTO_ROTATE_SPEED : opts.stillSeconds;
+    const total = Math.max(2, Math.round(seconds * fps));
     const e = this.elev;
     const base = this.az;
     const azimuths = Array.from({ length: total }, (_, i) => base + (turn ? (i / total) * Math.PI * 2 : 0));
@@ -602,7 +605,7 @@ export class SceneView {
       if (this.rubber) this.rubber.visible = v;
       this.grid.visible = v;
     };
-    const frames: Uint8ClampedArray[] = [];
+    const frames: Uint8Array[] = [];
     this.exporting = true;
     try {
       chrome(false);
@@ -619,19 +622,25 @@ export class SceneView {
       copy.width = W; copy.height = H;
       const c2 = copy.getContext("2d", { willReadFrequently: true });
       if (!c2) throw new Error("This browser cannot read the canvas, so a GIF cannot be made.");
-      for (let i = 0; i < total; i++) {
-        const t = i / opts.fps;
+      const capture = (i: number): Uint8ClampedArray => {
+        const t = i / fps;
         this.az = azimuths[i];
         this.updateCamera();
-        for (const n of this.nodes.values()) n.tick(t, 1 / opts.fps, this.az);
+        for (const n of this.nodes.values()) n.tick(t, 1 / fps, this.az);
         for (const ed of this.edges.values()) ed.tick(t);
         this.renderer.render(this.scene, this.camera);
         c2.drawImage(this.canvas, 0, 0); // straight after render, while the frame is still in the buffer
-        frames.push(c2.getImageData(0, 0, W, H).data);
+        return c2.getImageData(0, 0, W, H).data;
+      };
+      // One shared palette from three frames spread through the clip, then each frame is stored as palette
+      // indices as it is rendered. That keeps a long clip to a quarter of the memory of raw pixels.
+      const palette = makePalette([0, Math.floor(total / 3), Math.floor((2 * total) / 3)].map(capture));
+      for (let i = 0; i < total; i++) {
+        frames.push(indexFrame(capture(i), palette));
         opts.onProgress?.(i + 1, total * 2);
-        await new Promise<void>((r) => setTimeout(r, 0)); // let the progress message paint
+        if (i % 4 === 3) await new Promise<void>((r) => setTimeout(r, 0)); // let the progress message paint
       }
-      const bytes = await encodeGif(frames, W, H, opts.fps, (done) => opts.onProgress?.(total + done, total * 2));
+      const bytes = await writeGif(frames, palette, W, H, fps, (done) => opts.onProgress?.(total + done, total * 2));
       return new Blob([bytes as BlobPart], { type: "image/gif" });
     } finally {
       this.target.copy(saved.target);
