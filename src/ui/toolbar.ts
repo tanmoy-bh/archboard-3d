@@ -77,6 +77,10 @@ export class Toolbar {
       btn("image", "Export a PNG image", files.exportPng, "PNG"),
       sep(),
       this.themeBtn,
+      // The deployed site is gated on the server; this signs you out of it. There is no gate in local dev.
+      import.meta.env.PROD
+        ? h("a", { class: "tb", href: "__logout", title: "Lock this page (sign out)", "aria-label": "Lock this page" }, svg(UI_ICONS.lock))
+        : null,
     );
     this.refresh(true, "3d");
   }

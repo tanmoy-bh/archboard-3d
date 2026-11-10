@@ -6,7 +6,6 @@ import { Store } from "./model/store";
 import { emptyDoc } from "./model/types";
 import type { ViewMode } from "./scene/constants";
 import { SceneView } from "./scene/sceneView";
-import { isUnlocked, showGate } from "./security/gate";
 import { applySavedTheme, readTheme, toggleTheme } from "./theme";
 import { h } from "./ui/dom";
 import { Inspector } from "./ui/inspector";
@@ -185,12 +184,7 @@ function boot(): void {
   if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__archboard = { store, view, controller };
 }
 
-/** The passphrase gate comes first: until it is passed, no board is loaded and nothing is drawn. */
-async function start(): Promise<void> {
-  applySavedTheme();
-  const app = document.getElementById("app")!;
-  if (!isUnlocked()) await showGate(app);
-  boot();
-}
-
-void start();
+// Access is controlled on the server (see functions/_middleware.js): the page is only sent after the
+// passphrase has been accepted, so the app itself just starts.
+applySavedTheme();
+boot();

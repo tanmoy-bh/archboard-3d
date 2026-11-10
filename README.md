@@ -13,24 +13,29 @@ glyph exists as a hand-built 3D model (3D mode) and as the original flat drawing
 
 ## Access
 
-The app opens on a passphrase screen, and no board is loaded or drawn until the right passphrase is entered.
-Unlocking is remembered for the current browser tab only. To change the passphrase, compute a new hash with
-`deriveKey("new passphrase")` from `src/security/passphrase.ts` and replace `PASSPHRASE_HASH`.
+Live at **https://projects.tanmoybh.com/archboard-3d/** (passphrase protected).
 
-**This is a gate, not strong security.** The app runs entirely in the browser, so the check and its hash are
-visible to anyone who can load the page, and a short passphrase can be guessed offline. Only a salted, 20,000
-round hash is stored, never the passphrase. Boards you save are plain JSON, and the browser autosave in local
-storage is not encrypted. For real protection, also put the site behind server-side authentication.
+The site is gated on the server by `functions/_middleware.js`, a Cloudflare Pages Function. The page and every
+file in it are only sent after the passphrase is accepted, and the passphrase is never in the code or the page:
+
+- GitHub repository secret `ARCHBOARD_PASSPHRASE` holds it.
+- The deploy workflow copies it into the Pages secret `ACCESS_PASSPHRASE`.
+- A correct passphrase sets an HttpOnly cookie for 14 days. Changing the passphrase signs everyone out.
+- The lock icon at the right of the toolbar signs you out.
+
+Boards you save are plain JSON, and the browser autosave in local storage is not encrypted. There is no gate when
+you run it locally.
 
 ## Run it
 
 ```bash
 npm install
-npm run dev        # http://127.0.0.1:5173
+npm run dev        # http://127.0.0.1:5173, no passphrase locally
 ```
 
 ```bash
-npm test           # unit tests (routing, label placement, store, file format)
+npm test           # unit tests (routing, label placement, store, file format, glyphs)
+node --test gate-tests/middleware.test.mjs   # tests for the passphrase gate
 npm run build      # typecheck + production build into dist/
 ```
 
@@ -81,7 +86,7 @@ TypeScript, Vite and Three.js. No UI framework. Three layers, each usable withou
 - `src/model/` has the document, selection and undo history (snapshot based), and file parsing. No DOM, no Three.js.
 - `src/glyphs/` has the components: `models.ts` builds the 39 3D models from primitives, `flatIcons.ts` holds the original 2D drawings,
   and `thumbs.ts` renders the palette and legend pictures.
-- `src/security/` has the passphrase gate (a self-contained SHA-256, the salted hash, and the screen).
+- `functions/_middleware.js` is the server-side passphrase gate, and `gate-tests/` tests it.
 - `src/scene/` has the 3D view. `routing.ts` and `labels.ts` are pure and unit tested: they route arrows
   around tiles in lanes, and place label pills in screen space so they avoid tile names and each other.
   `sceneView.ts` owns the renderer, the isometric orthographic camera and picking.
@@ -96,3 +101,15 @@ models such as a phone or card never go edge-on. The 2D glyphs are SVG, rasteris
 - Models turn to face the viewer, so there is no per-tile rotation. Rotating the view is the rotate feature.
 - No groups, regions or containers yet, and no traffic simulation. Both build on this editor.
 - Arrow routing is automatic. You steer it by moving tiles, not by dragging bend points.
+
+## Deploy
+
+Pushing to `main` runs `.github/workflows/deploy-cloudflare.yml`, which tests, builds and deploys `dist/` and
+`functions/` to the Cloudflare Pages project `tanmoybh-archboard-3d`. It uses:
+
+- `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the `tanmoy-bh` organization secrets
+- `ARCHBOARD_PASSPHRASE`, a repository secret you add once
+
+The [projects hub](https://github.com/tanmoy-bh/projects) serves it at `/archboard-3d/` by proxying to
+`https://tanmoybh-archboard-3d.pages.dev`. Assets use relative paths (`base: "./"` in `vite.config.ts`) so the
+app works under that sub-path.
