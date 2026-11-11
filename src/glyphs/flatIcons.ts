@@ -187,6 +187,60 @@ export const ICONS: Record<IconKey, IconFn> = {
     `<path d="M${x} ${y - 5} v-4" stroke="#1e293b" stroke-width="3"/><rect x="${x - 10}" y="${y - 18}" width="20" height="9" rx="2.5" ${st("#334155", "#1e293b", 1.5)}/><rect x="${x - 6}" y="${y - 25}" width="3.4" height="7.5" fill="#e6c04a"/><rect x="${x + 2.6}" y="${y - 25}" width="3.4" height="7.5" fill="#e6c04a"/>`,
   globe: (x, y) =>
     `<circle cx="${x}" cy="${y}" r="17" ${st("#5aa2ff", "#1d4f9e")}/><ellipse cx="${x}" cy="${y}" rx="7" ry="17" fill="none" stroke="#1d4f9e" stroke-width="1.4"/><path d="M${x - 17} ${y} h34 M${x - 14} ${y - 9} h28 M${x - 14} ${y + 9} h28" stroke="#1d4f9e" stroke-width="1.2"/>`,
+  lambda: (x, y) =>
+    `<rect x="${x - 21}" y="${y - 21}" width="42" height="42" rx="8" ${st("#f2681c", "#a23d06", 1.8)}/>` +
+    `<text x="${x}" y="${y + 11}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="34" fill="#fff">λ</text>`,
+  container: (x, y) =>
+    `<rect x="${x - 23}" y="${y - 13}" width="46" height="26" rx="2" ${st("#1f6fd6", "#164a8f", 1.8)}/>` +
+    Array.from({ length: 7 }, (_, i) => `<path d="M${x - 17 + i * 5.7} ${y - 10} v20" stroke="#1757a8" stroke-width="2"/>`).join("") +
+    `<path d="M${x + 17} ${y - 13} v26" stroke="#0e2f5c" stroke-width="1.6"/>`,
+  cluster: (x, y) =>
+    `<polygon points="${Array.from({ length: 7 }, (_, i) => `${x + 22 * Math.sin((i / 7) * Math.PI * 2)},${y - 22 * Math.cos((i / 7) * Math.PI * 2)}`).join(" ")}" ${st("#326ce5", "#1a3d91", 1.8)} stroke-linejoin="round"/>` +
+    `<circle cx="${x}" cy="${y}" r="9" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="${x}" cy="${y}" r="2.6" fill="#fff"/>` +
+    Array.from({ length: 7 }, (_, i) => { const a = (i / 7) * Math.PI * 2; return `<path d="M${x} ${y} L${x + 14 * Math.sin(a)} ${y - 14 * Math.cos(a)}" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="${x + 14 * Math.sin(a)}" cy="${y - 14 * Math.cos(a)}" r="2" fill="#fff"/>`; }).join(""),
+  dns: (x, y) =>
+    `<path d="M${x} ${y - 22} V${y + 22}" stroke="#8b6b4a" stroke-width="3.4" stroke-linecap="round"/>` +
+    [["#2fa37a", -17, "www"], ["#e0a526", -4, ".com"], ["#5b6cf0", 9, "DNS"]].map(([c, o, t]) => `<path d="M${x - 17} ${y + (o as number)} H${x + 14} l6 5.5 l-6 5.5 H${x - 17} z" ${st(c as string, "#2a2f3a", 1.3)} stroke-linejoin="round"/><text x="${x - 1}" y="${y + (o as number) + 8.6}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="8" fill="#fff">${t}</text>`).join(""),
+  warehouse: (x, y) =>
+    `<path d="M${x - 23} ${y - 4} L${x} ${y - 21} L${x + 23} ${y - 4} V${y + 20} H${x - 23} z" ${st("#8794a6", "#4a5463", 1.8)} stroke-linejoin="round"/>` +
+    `<path d="M${x - 23} ${y - 4} L${x} ${y - 21} L${x + 23} ${y - 4}" fill="none" stroke="#d9534f" stroke-width="3.4" stroke-linejoin="round"/>` +
+    `<rect x="${x - 10}" y="${y + 2}" width="20" height="18" ${st("#cfd6de", "#4a5463", 1.4)}/>` +
+    Array.from({ length: 4 }, (_, i) => `<path d="M${x - 10} ${y + 6 + i * 4} h20" stroke="#8794a6" stroke-width="1"/>`).join(""),
+  alarm: (x, y) =>
+    `<rect x="${x - 19}" y="${y + 8}" width="38" height="12" rx="3" ${st("#59616f", "#2a2f3a", 1.6)}/>` +
+    `<path d="M${x - 15} ${y + 8} a15 17 0 0 1 30 0 z" fill="#ff4d4d" fill-opacity=".8" stroke="#8a1414" stroke-width="1.8" stroke-linejoin="round"/>` +
+    `<circle cx="${x}" cy="${y - 2}" r="4.2" fill="#fff3b0" stroke="#d9a400" stroke-width="1.2"/>` +
+    `<path d="M${x - 24} ${y - 10} l-5 -3 M${x + 24} ${y - 10} l5 -3 M${x} ${y - 20} v-5" stroke="#ff9d9d" stroke-width="2.2" stroke-linecap="round"/>`,
+  key: (x, y) =>
+    `<g transform="rotate(-35 ${x} ${y})"><circle cx="${x}" cy="${y - 12}" r="9.5" fill="none" stroke="#a37a00" stroke-width="7"/><circle cx="${x}" cy="${y - 12}" r="9.5" fill="none" stroke="#f2c230" stroke-width="4.6"/>` +
+    `<path d="M${x} ${y - 2} V${y + 22}" stroke="#a37a00" stroke-width="7" stroke-linecap="round"/><path d="M${x} ${y - 2} V${y + 22}" stroke="#f2c230" stroke-width="4.4" stroke-linecap="round"/>` +
+    `<path d="M${x} ${y + 12} h7 M${x} ${y + 19} h5" stroke="#f2c230" stroke-width="3.4" stroke-linecap="round"/></g>`,
+  identity: (x, y) =>
+    `<rect x="${x - 17}" y="${y - 22}" width="34" height="44" rx="5" ${st("#6366f1", "#3b3f99", 1.8)}/><rect x="${x - 6}" y="${y - 19}" width="12" height="3.4" rx="1.7" fill="#1f2160"/>` +
+    `<circle cx="${x}" cy="${y - 6}" r="6.5" fill="#f5d0b0"/><path d="M${x - 11} ${y + 8} a11 8 0 0 1 22 0 z" fill="#e0e7ff"/>` +
+    `<path d="M${x - 11} ${y + 14} h22 M${x - 11} ${y + 18} h14" stroke="#c7d2fe" stroke-width="1.8" stroke-linecap="round"/>`,
+  firewall: (x, y) =>
+    [0, 1, 2, 3].map((r) => Array.from({ length: r % 2 === 0 ? 3 : 4 }, (_, i) => `<rect x="${x - 21 + (r % 2 === 0 ? 0 : -7) + i * 14 + (r % 2 === 0 ? 0 : 0)}" y="${y - 1 + r * 6.4}" width="14" height="6.4" ${st(["#c0462c", "#d2573a", "#b83d25"][(i + r) % 3], "#7a2a18", 1)}/>`).join("")).join("") +
+    `<path d="M${x - 10} ${y - 2} C${x - 14} ${y - 12} ${x - 4} ${y - 12} ${x - 6} ${y - 22} C${x + 2} ${y - 16} ${x + 4} ${y - 10} ${x + 2} ${y - 6} C${x + 8} ${y - 9} ${x + 8} ${y - 14} ${x + 7} ${y - 17} C${x + 16} ${y - 11} ${x + 14} ${y - 4} ${x + 10} ${y - 2} z" ${st("#ff7a1a", "#b83d00", 1.4)} stroke-linejoin="round"/>`,
+  network: (x, y) =>
+    [[-16, -14], [16, -14], [-16, 14], [16, 14]].map(([a, b]) => `<path d="M${x} ${y} L${x + a} ${y + b}" stroke="#5eead4" stroke-width="2.2"/><circle cx="${x + a}" cy="${y + b}" r="5.4" ${st("#2dd4bf", "#115e59", 1.5)}/>`).join("") +
+    `<circle cx="${x}" cy="${y}" r="9" ${st("#14b8a6", "#115e59", 1.8)}/>`,
+  etl: (x, y) =>
+    `<rect x="${x - 23}" y="${y + 6}" width="46" height="9" rx="4.5" ${st("#3b3f4a", "#1f2937", 1.5)}/><circle cx="${x - 18}" cy="${y + 10.5}" r="2.4" fill="#9ca3af"/><circle cx="${x + 18}" cy="${y + 10.5}" r="2.4" fill="#9ca3af"/>` +
+    `<path d="M${x - 8} ${y + 6} V${y - 14} H${x + 8} V${y + 6}" fill="none" stroke="#8b5cf6" stroke-width="4" stroke-linejoin="round"/>` +
+    `<rect x="${x - 21}" y="${y - 8}" width="11" height="14" rx="2" ${st("#60a5fa", "#1d4f9e", 1.4)}/><rect x="${x + 10}" y="${y - 8}" width="11" height="14" rx="2" ${st("#34d399", "#0f7a56", 1.4)}/>`,
+  iot: (x, y) =>
+    `<rect x="${x - 20}" y="${y + 1}" width="40" height="20" rx="3" ${st("#15803d", "#0b4a23", 1.6)}/><rect x="${x - 12}" y="${y + 5}" width="14" height="12" rx="2" fill="#1f2937"/>` +
+    `<circle cx="${x + 11}" cy="${y + 8}" r="2.2" fill="#e6c04a"/><circle cx="${x + 11}" cy="${y + 15}" r="2.2" fill="#e6c04a"/>` +
+    `<path d="M${x + 14} ${y + 1} V${y - 12}" stroke="#374151" stroke-width="2.4" stroke-linecap="round"/><circle cx="${x + 14}" cy="${y - 14}" r="2.6" fill="#ef4444"/>` +
+    [7, 12, 17].map((r) => `<path d="M${x + 14 - r * 0.7} ${y - 14 - r * 0.7} A${r} ${r} 0 0 1 ${x + 14 + r * 0.7} ${y - 14 - r * 0.7}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>`).join(""),
+  archive: (x, y) =>
+    `<rect x="${x - 15}" y="${y - 22}" width="30" height="44" rx="3" ${st("#64748b", "#334155", 1.8)}/>` +
+    [-20, 1].map((o) => `<rect x="${x - 12}" y="${y + o + 1}" width="24" height="19" rx="2" ${st("#8b9bb0", "#334155", 1.3)}/><path d="M${x - 5} ${y + o + 5} h10" stroke="#e2e8f0" stroke-width="2.4" stroke-linecap="round"/><rect x="${x - 4}" y="${y + o + 10}" width="8" height="5" rx="1" fill="#f8fafc"/>`).join(""),
+  files: (x, y) =>
+    `<path d="M${x - 23} ${y - 16} h14 l4 4 h28 v28 a3 3 0 0 1 -3 3 h-40 a3 3 0 0 1 -3 -3 z" ${st("#d99512", "#7a4b00", 1.7)} stroke-linejoin="round"/>` +
+    `<rect x="${x - 17}" y="${y - 12}" width="32" height="14" rx="1" ${st("#fff", "#bfa66a", 1.2)}/>` +
+    `<path d="M${x - 23} ${y - 4} h46 v21 a3 3 0 0 1 -3 3 h-40 a3 3 0 0 1 -3 -3 z" ${st("#f6b21c", "#7a4b00", 1.7)} stroke-linejoin="round"/>`,
 };
 
 /** Full standalone SVG markup for an icon, used for rasterising and for DOM previews. */

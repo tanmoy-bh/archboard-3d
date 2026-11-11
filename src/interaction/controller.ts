@@ -1,18 +1,21 @@
 import type { Store } from "../model/store";
-import { IconKey, snap } from "../model/types";
+import { IconKey, ZONE_COLORS, ZONE_MIN, genId, snap } from "../model/types";
+import { zoneMembers } from "../model/zones";
 import { ICON_NAMES } from "../glyphs/catalog";
 import { SP } from "../scene/constants";
 import type { SceneView } from "../scene/sceneView";
 import { isTypingTarget } from "../ui/dom";
 
-export type Tool = "select" | "connect" | "text";
+export type Tool = "select" | "connect" | "text" | "zone";
 
 const DRAG_THRESHOLD = 4;
 
 type Drag =
   | { kind: "none" }
   | { kind: "pan"; x: number; y: number; moved: boolean; clearOnClick: boolean }
-  | { kind: "nodes"; startGX: number; startGZ: number; origins: Map<string, { gx: number; gy: number }>; moved: boolean; x: number; y: number };
+  | { kind: "nodes"; startGX: number; startGZ: number; origins: Map<string, { gx: number; gy: number }>; moved: boolean; x: number; y: number }
+  | { kind: "zone-draw"; id: string; startGX: number; startGY: number; moved: boolean; x: number; y: number }
+  | { kind: "zone-resize"; id: string; corner: number; fixedX: number; fixedY: number; moved: boolean; x: number; y: number };
 
 /** Turns pointer and keyboard input into edits on the Store and camera moves on the SceneView. */
 export class Controller {
@@ -83,6 +86,7 @@ export class Controller {
     else if (this.armed) c.style.cursor = "copy";
     else if (this.tool === "connect") c.style.cursor = hover ? "crosshair" : "default";
     else if (this.tool === "text") c.style.cursor = "text";
+    else if (this.tool === "zone") c.style.cursor = "crosshair";
     else c.style.cursor = hover ? "pointer" : "grab";
   }
 
@@ -119,6 +123,32 @@ export class Controller {
       return;
     }
 
+    // zone tool: press, drag out a rectangle, release. A plain click drops a default sized zone.
+    if (this.tool === "zone") {
+      const g = this.view.groundPoint(e.clientX, e.clientY);
+      if (g) {
+        const gx = snap(g.x / SP), gy = snap(g.z / SP);
+        const id = genId("z");
+        this.store.beginTransient();
+        this.store.transient((d) => { d.zones.push({ id, gx, gy, w: ZONE_MIN, h: ZONE_MIN, label: "Zone", color: ZONE_COLORS[d.zones.length % ZONE_COLORS.length] }); });
+        this.store.select([id]);
+        this.drag = { kind: "zone-draw", id, startGX: gx, startGY: gy, moved: false, x: e.clientX, y: e.clientY };
+      }
+      return;
+    }
+
+    // a corner handle of the selected zone starts a resize
+    if (this.tool === "select" && this.store.selection.size === 1) {
+      const [only] = [...this.store.selection];
+      const z = this.store.zone(only);
+      const corner = z ? this.view.pickZoneCorner(only, e.clientX, e.clientY) : null;
+      if (z && corner !== null) {
+        const right = corner & 1, far = corner >> 1;
+        this.drag = { kind: "zone-resize", id: only, corner, fixedX: right ? z.gx : z.gx + z.w, fixedY: far ? z.gy : z.gy + z.h, moved: false, x: e.clientX, y: e.clientY };
+        return;
+      }
+    }
+
     const nodeId = this.view.pickNode(e.clientX, e.clientY);
 
     if (this.tool === "connect") {
@@ -133,19 +163,18 @@ export class Controller {
     }
 
     // select tool: text boxes are drawn on top, so they are picked first
-    const itemId = this.view.pickText(e.clientX, e.clientY) ?? nodeId;
+    const edgeId = nodeId || this.view.pickText(e.clientX, e.clientY) ? null : this.view.pickEdge(e.clientX, e.clientY);
+    const itemId = this.view.pickText(e.clientX, e.clientY) ?? nodeId ?? (edgeId ? null : this.view.pickZone(e.clientX, e.clientY));
     if (itemId) {
       if (e.shiftKey) this.store.toggleSelect(itemId);
       else if (!this.store.selection.has(itemId)) this.store.select([itemId]);
       const g = this.view.groundPoint(e.clientX, e.clientY);
-      const origins = new Map<string, { gx: number; gy: number }>();
-      for (const n of [...this.store.doc.nodes, ...this.store.doc.texts]) if (this.store.selection.has(n.id)) origins.set(n.id, { gx: n.gx, gy: n.gy });
+      const origins = this.movingOrigins(!e.altKey);
       if (g && origins.size > 0) {
         this.drag = { kind: "nodes", startGX: g.x / SP, startGZ: g.z / SP, origins, moved: false, x: e.clientX, y: e.clientY };
       }
       return;
     }
-    const edgeId = this.view.pickEdge(e.clientX, e.clientY);
     if (edgeId) {
       if (e.shiftKey) this.store.toggleSelect(edgeId);
       else this.store.select([edgeId]);
@@ -174,6 +203,12 @@ export class Controller {
       return;
     }
 
+    if (d.kind === "zone-draw" || d.kind === "zone-resize") {
+      if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > DRAG_THRESHOLD) d.moved = true;
+      if (d.moved) this.dragZone(d, e);
+      return;
+    }
+
     if (this.armed) {
       const g = this.view.groundPoint(e.clientX, e.clientY);
       if (g) {
@@ -187,8 +222,9 @@ export class Controller {
     const textId = this.tool === "select" ? this.view.pickText(e.clientX, e.clientY) : null;
     const nodeId = textId ? null : this.view.pickNode(e.clientX, e.clientY);
     const edgeId = nodeId || textId ? null : this.view.pickEdge(e.clientX, e.clientY);
-    this.view.setHover(nodeId, edgeId, textId);
-    this.updateCursor(!!(nodeId || edgeId || textId));
+    const zoneId = this.tool === "select" && !nodeId && !textId && !edgeId ? this.view.pickZone(e.clientX, e.clientY) : null;
+    this.view.setHover(nodeId, edgeId, textId, zoneId);
+    this.updateCursor(!!(nodeId || edgeId || textId || zoneId));
 
     if (this.connectFrom) {
       const from = this.store.node(this.connectFrom);
@@ -203,14 +239,47 @@ export class Controller {
     const dgx = snap(g.x / SP - d.startGX), dgy = snap(g.z / SP - d.startGZ);
     const ids = new Set(d.origins.keys());
     for (const [id, o] of d.origins) {
-      // tiles must keep a gap from each other; text boxes may sit anywhere
+      // tiles must keep a gap from each other; text boxes and zones may sit anywhere
       if (this.store.node(id) && !this.store.isFree(o.gx + dgx, o.gy + dgy, ids)) return; // blocked: keep the last valid position
     }
     this.store.transient((doc) => {
-      for (const n of [...doc.nodes, ...doc.texts]) {
+      for (const n of [...doc.nodes, ...doc.texts, ...doc.zones]) {
         const o = d.origins.get(n.id);
         if (o) { n.gx = o.gx + dgx; n.gy = o.gy + dgy; }
       }
+    });
+  }
+
+  /**
+   * Starting positions of everything a drag or nudge moves: the selected tiles, text boxes and zones, and
+   * (unless `withMembers` is false, the Alt drag) whatever sits inside each selected zone.
+   */
+  private movingOrigins(withMembers: boolean): Map<string, { gx: number; gy: number }> {
+    const doc = this.store.doc, sel = this.store.selection;
+    const ids = new Set<string>(sel);
+    if (withMembers) {
+      for (const z of doc.zones) {
+        if (!sel.has(z.id)) continue;
+        const m = zoneMembers(doc, z.id);
+        for (const id of [...m.nodes, ...m.texts, ...m.zones]) ids.add(id);
+      }
+    }
+    const origins = new Map<string, { gx: number; gy: number }>();
+    for (const n of [...doc.nodes, ...doc.texts, ...doc.zones]) if (ids.has(n.id)) origins.set(n.id, { gx: n.gx, gy: n.gy });
+    return origins;
+  }
+
+  private dragZone(d: Extract<Drag, { kind: "zone-draw" | "zone-resize" }>, e: PointerEvent): void {
+    const g = this.view.groundPoint(e.clientX, e.clientY);
+    if (!g) return;
+    const mx = snap(g.x / SP), my = snap(g.z / SP);
+    const fx = d.kind === "zone-draw" ? d.startGX : d.fixedX, fy = d.kind === "zone-draw" ? d.startGY : d.fixedY;
+    let x0 = Math.min(mx, fx), x1 = Math.max(mx, fx), y0 = Math.min(my, fy), y1 = Math.max(my, fy);
+    if (x1 - x0 < ZONE_MIN) { if (mx < fx) x0 = fx - ZONE_MIN; else x1 = fx + ZONE_MIN; }
+    if (y1 - y0 < ZONE_MIN) { if (my < fy) y0 = fy - ZONE_MIN; else y1 = fy + ZONE_MIN; }
+    this.store.transient((doc) => {
+      const z = doc.zones.find((q) => q.id === d.id);
+      if (z) { z.gx = x0; z.gy = y0; z.w = x1 - x0; z.h = y1 - y0; }
     });
   }
 
@@ -220,10 +289,22 @@ export class Controller {
     this.view.holdRotation(false);
     if (this.view.canvas.hasPointerCapture(e.pointerId)) this.view.canvas.releasePointerCapture(e.pointerId);
 
-    if (d.kind === "nodes") {
+    if (d.kind === "zone-draw") {
+      if (!d.moved) {
+        // a plain click: a default sized zone centred on the click
+        this.store.transient((doc) => {
+          const z = doc.zones.find((q) => q.id === d.id);
+          if (z) { z.gx = d.startGX - 3; z.gy = d.startGY - 2; z.w = 6; z.h = 4; }
+        });
+      }
+      this.store.endTransient(true);
+      if (!e.shiftKey) this.setTool("select");
+    } else if (d.kind === "zone-resize") {
+      this.store.endTransient(true);
+    } else if (d.kind === "nodes") {
       if (d.moved) this.store.endTransient(true);
       else if (!e.shiftKey && this.store.selection.size > 1) {
-        const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY);
+        const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY) ?? this.view.pickZone(e.clientX, e.clientY);
         if (id) this.store.select([id]); // click without dragging inside a multi selection narrows it
       }
     } else if (d.kind === "pan" && !d.moved && d.clearOnClick) {
@@ -259,7 +340,7 @@ export class Controller {
 
   private onDouble = (e: MouseEvent): void => {
     if (this.tool !== "select") return;
-    const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY);
+    const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY) ?? this.view.pickZone(e.clientX, e.clientY);
     if (id) { this.store.select([id]); this.onFocusLabel(); return; }
     const edge = this.view.pickEdge(e.clientX, e.clientY);
     if (edge) { this.store.select([edge]); this.onFocusLabel(); }
@@ -324,6 +405,7 @@ export class Controller {
       case "v": this.setTool("select"); break;
       case "c": this.setTool("connect"); break;
       case "x": this.setTool("text"); break;
+      case "z": this.setTool("zone"); break;
       case "q": this.view.rotateView(-1); break;
       case "e": this.view.rotateView(1); break;
       case "r": this.onToggleAutoRotate(); break;
@@ -347,13 +429,12 @@ export class Controller {
     const step = big ? 1 : 0.5;
     const dx = key === "arrowleft" ? -step : key === "arrowright" ? step : 0;
     const dy = key === "arrowup" ? -step : key === "arrowdown" ? step : 0;
-    const ids = new Set(this.store.selection);
+    const ids = new Set(this.movingOrigins(true).keys());
+    if (ids.size === 0) return;
     const movingNodes = this.store.doc.nodes.filter((n) => ids.has(n.id));
-    const movingTexts = this.store.doc.texts.filter((t) => ids.has(t.id));
-    if (movingNodes.length === 0 && movingTexts.length === 0) return;
     if (!movingNodes.every((n) => this.store.isFree(n.gx + dx, n.gy + dy, ids))) return;
     this.store.mutate((d) => {
-      for (const n of [...d.nodes, ...d.texts]) if (ids.has(n.id)) { n.gx += dx; n.gy += dy; }
+      for (const n of [...d.nodes, ...d.texts, ...d.zones]) if (ids.has(n.id)) { n.gx += dx; n.gy += dy; }
     }, "nudge");
   }
 }

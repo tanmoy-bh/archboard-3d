@@ -1,4 +1,4 @@
-import { DocData, EdgeData, NodeData, TEXT_MAX_LENGTH, TextData, genId, isIconKey, isTextSize, snap } from "./types";
+import { DocData, EdgeData, NodeData, TEXT_MAX_LENGTH, TextData, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, ZoneData, genId, isHexColor, isIconKey, isTextSize, snap } from "./types";
 
 export function stringifyDoc(doc: DocData): string {
   return JSON.stringify(doc, null, 2);
@@ -78,7 +78,26 @@ export function parseDoc(text: string): DocData {
     }
   }
 
+  const zones: ZoneData[] = [];
+  if (Array.isArray(raw.zones)) {
+    const used = new Set<string>([...seen, ...edgeIds, ...texts.map((t) => t.id)]);
+    for (const z of raw.zones) {
+      if (!isObj(z)) continue;
+      const gx = Number(z.gx), gy = Number(z.gy), w = Number(z.w), h = Number(z.h);
+      if (![gx, gy, w, h].every(Number.isFinite)) continue;
+      let id = typeof z.id === "string" && z.id ? z.id : genId("z");
+      while (used.has(id)) id = genId("z");
+      used.add(id);
+      zones.push({
+        id, gx: snap(gx), gy: snap(gy),
+        w: Math.max(ZONE_MIN, snap(w)), h: Math.max(ZONE_MIN, snap(h)),
+        label: typeof z.label === "string" ? z.label.slice(0, ZONE_LABEL_MAX) : "",
+        color: isHexColor(z.color) ? z.color.toLowerCase() : ZONE_COLORS[0],
+      });
+    }
+  }
+
   const steps = Array.isArray(raw.steps) ? raw.steps.filter((s): s is string => typeof s === "string") : [];
   const title = typeof raw.title === "string" && raw.title ? raw.title : "Untitled architecture";
-  return { version: 1, title, nodes, edges, texts, steps };
+  return { version: 1, title, nodes, edges, texts, zones, steps };
 }

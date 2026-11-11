@@ -775,6 +775,231 @@ const BUILD: Record<IconKey, () => Glyph3D> = {
     for (const x of [-0.12, 0.12]) box(g, 0.07, 0.22, 0.05, "#e6c04a", x, 1.13, 0, { r: 0.01, metal: 0.8, rough: 0.3 });
     return { group: g, tick: (t) => { plug.position.y = 0.99 + Math.max(0, Math.sin(t * 2.2)) * 0.03; } };
   },
+
+  // ---------------------------------------------------------------- cloud components
+
+  /** Function / serverless: an orange chip card with a lambda and a spark. */
+  lambda() {
+    const g = new THREE.Group();
+    cyl(g, 0.55, 0.57, 0.05, "#a23d06", 0, 0, 0);
+    box(g, 1.0, 0.96, 0.2, "#f2681c", 0, 0.08, 0, { r: 0.08 });
+    plaque(g, "λ", "#ffffff", 0.78, 0, 0.58, 0.106, 128);
+    for (let i = -3; i <= 3; i++) box(g, 0.07, 0.1, 0.07, "#e6c04a", i * 0.125, 0.0, 0, { r: 0.01, metal: 0.8, rough: 0.3 });
+    const spark = ball(g, 0.07, "#ffe08a", 0.36, 0.98, 0.12, { emissive: "#ffb000", ei: 1 });
+    return { group: g, tick: (t) => spark.scale.setScalar(0.8 + Math.max(0, Math.sin(t * 5)) * 0.6) };
+  },
+
+  /** Container: a shipping container with ridged sides and a door. */
+  container() {
+    const g = new THREE.Group();
+    box(g, 1.3, 0.62, 0.66, "#1f6fd6", 0, 0.04, 0, { r: 0.04 });
+    for (let i = -5; i <= 5; i++) box(g, 0.035, 0.52, 0.02, "#1757a8", i * 0.11, 0.09, 0.335, { r: 0.006 });
+    box(g, 1.34, 0.04, 0.7, "#164a8f", 0, 0.66, 0, { r: 0.02 });
+    box(g, 0.03, 0.5, 0.025, "#0e2f5c", 0.6, 0.1, 0.34, { r: 0.005 });
+    const hatch = box(g, 0.26, 0.26, 0.26, "#f6c24c", 0.35, 0.7, 0, { r: 0.03 });
+    return { group: g, tick: (t) => { hatch.position.y = 0.83 + Math.sin(t * 1.6) * 0.03; } };
+  },
+
+  /** Cluster / Kubernetes: a blue seven sided badge with a ship's wheel. */
+  cluster() {
+    const g = new THREE.Group();
+    cyl(g, 0.55, 0.57, 0.05, "#1a3d91", 0, 0, 0);
+    const badge = mesh(g, new THREE.CylinderGeometry(0.58, 0.58, 0.18, 7), material("#326ce5", { rough: 0.4 }), 0, 0.72, 0);
+    badge.rotation.x = Math.PI / 2;
+    const wheel = new THREE.Group();
+    wheel.position.set(0, 0.72, 0.11);
+    torus(wheel, 0.28, 0.035, "#ffffff", 0, 0, 0);
+    ball(wheel, 0.08, "#ffffff", 0, 0, 0);
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      between(wheel, [0, 0, 0], [Math.sin(a) * 0.4, Math.cos(a) * 0.4, 0], 0.028, "#ffffff");
+      ball(wheel, 0.045, "#ffffff", Math.sin(a) * 0.4, Math.cos(a) * 0.4, 0);
+    }
+    g.add(wheel);
+    return { group: g, tick: (t) => { wheel.rotation.z = t * 0.5; } };
+  },
+
+  /** DNS / domain: a signpost with three pointing signs. */
+  dns() {
+    const g = new THREE.Group();
+    cyl(g, 0.4, 0.44, 0.06, "#3a4452", 0, 0, 0);
+    cyl(g, 0.05, 0.05, 1.25, "#8b6b4a", 0, 0.06, 0);
+    const signs: [string, number, number, string, string][] = [["#2fa37a", 1.0, 0.1, "www", "#ffffff"], ["#e0a526", 0.78, -0.12, ".com", "#3a2a00"], ["#5b6cf0", 0.56, 0.08, "DNS", "#ffffff"]];
+    signs.forEach(([c, y, rot, text, tc]) => {
+      const s = new THREE.Group();
+      box(s, 0.78, 0.2, 0.05, c, 0, 0, 0, { r: 0.03 });
+      const tip = mesh(s, new THREE.ConeGeometry(0.1, 0.14, 3), material(c), 0.45, 0.1, 0);
+      tip.rotation.z = -Math.PI / 2;
+      plaque(s, text, tc, 0.4, -0.04, 0.1, 0.028);
+      s.position.set(0.0, y, 0.06);
+      s.rotation.y = rot;
+      g.add(s);
+    });
+    return { group: g };
+  },
+
+  /** Data warehouse: a depot building with a roof, a rolling door and crates. */
+  warehouse() {
+    const g = new THREE.Group();
+    box(g, 1.2, 0.56, 0.9, "#8794a6", 0, 0, 0, { r: 0.04 });
+    const roofShape = new THREE.Shape();
+    roofShape.moveTo(-0.66, 0); roofShape.lineTo(0, 0.34); roofShape.lineTo(0.66, 0); roofShape.closePath();
+    const roofGeo = new THREE.ExtrudeGeometry(roofShape, { depth: 0.98, bevelEnabled: false });
+    roofGeo.translate(0, 0, -0.49);
+    mesh(g, roofGeo, material("#d9534f"), 0, 0.56, 0);
+    box(g, 0.52, 0.42, 0.04, "#cfd6de", 0, 0, 0.45, { r: 0.01 });
+    for (let i = 0; i < 5; i++) box(g, 0.5, 0.012, 0.012, "#8794a6", 0, 0.07 + i * 0.075, 0.475, { r: 0.002 });
+    box(g, 0.26, 0.2, 0.26, "#e0a526", -0.46, 0, 0.62, { r: 0.02 });
+    const top = box(g, 0.22, 0.17, 0.22, "#f0b232", -0.46, 0.2, 0.62, { r: 0.02 });
+    plaque(g, "DW", "#ffffff", 0.3, 0.42, 0.38, 0.452);
+    return { group: g, tick: (t) => { top.rotation.y = Math.sin(t) * 0.2; } };
+  },
+
+  /** Monitoring / alarm: a beacon light with a turning lamp inside a red dome. */
+  alarm() {
+    const g = new THREE.Group();
+    cyl(g, 0.5, 0.54, 0.14, "#3a4452", 0, 0, 0);
+    cyl(g, 0.4, 0.46, 0.14, "#59616f", 0, 0.14, 0);
+    const dome = mesh(g, new THREE.SphereGeometry(0.4, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), material("#ff4d4d", { opacity: 0.62, rough: 0.15 }), 0, 0.28, 0);
+    dome.renderOrder = 2;
+    const lamp = new THREE.Group();
+    lamp.position.y = 0.5;
+    ball(lamp, 0.1, "#fff3b0", 0, 0, 0, { emissive: "#ffd000", ei: 1.4 });
+    box(lamp, 0.62, 0.04, 0.05, "#fff3b0", 0, 0, 0, { emissive: "#ffe27a", ei: 1 });
+    g.add(lamp);
+    for (const x of [-0.62, 0.62]) between(g, [x * 0.9, 0.55, 0], [x * 1.1, 0.7, 0], 0.025, "#ff9d9d");
+    return { group: g, tick: (t) => { lamp.rotation.y = t * 4; } };
+  },
+
+  /** Key / secrets: a gold key with a round head and teeth, leaning on a pad. */
+  key() {
+    const g = new THREE.Group();
+    cyl(g, 0.55, 0.57, 0.05, "#7a5a00", 0, 0, 0);
+    const k = new THREE.Group();
+    torus(k, 0.25, 0.09, "#f2c230", 0, 0, 0, [0, 0, 0], Math.PI * 2, { metal: 0.6, rough: 0.3 });
+    ball(k, 0.07, "#7a5a00", 0, 0, 0.05);
+    box(k, 0.13, 0.7, 0.14, "#f2c230", 0, -0.6, 0, { r: 0.04, metal: 0.6, rough: 0.3 });
+    for (const [y, w] of [[-0.72, 0.26], [-0.88, 0.2]] as const) box(k, w, 0.11, 0.14, "#f2c230", w / 2 + 0.03, y, 0, { r: 0.03, metal: 0.6, rough: 0.3 });
+    k.position.set(0, 1.12, 0);
+    k.rotation.z = 0.35;
+    g.add(k);
+    return { group: g, tick: (t) => { k.rotation.y = Math.sin(t * 0.9) * 0.5; } };
+  },
+
+  /** Identity / IAM: an ID badge with a portrait and text lines. */
+  identity() {
+    const g = new THREE.Group();
+    cyl(g, 0.55, 0.57, 0.05, "#3b3f99", 0, 0, 0);
+    box(g, 0.92, 1.18, 0.12, "#6366f1", 0, 0.1, 0, { r: 0.07 });
+    box(g, 0.3, 0.05, 0.03, "#1f2160", 0, 1.17, 0.07, { r: 0.02 });
+    ball(g, 0.16, "#f5d0b0", 0, 0.88, 0.1);
+    const body = ball(g, 0.3, "#e0e7ff", 0, 0.5, 0.08);
+    body.scale.set(1, 0.7, 0.3);
+    box(g, 0.62, 0.04, 0.012, "#e0e7ff", 0, 0.34, 0.066, { r: 0.006 });
+    box(g, 0.44, 0.04, 0.012, "#c7d2fe", -0.09, 0.24, 0.066, { r: 0.006 });
+    const tick = box(g, 0.16, 0.16, 0.02, "#34d399", 0.3, 0.97, 0.066, { r: 0.03, emissive: "#34d399", ei: 0.6 });
+    return { group: g, tick: (t) => tick.scale.setScalar(1 + Math.sin(t * 3) * 0.1) };
+  },
+
+  /** Firewall / WAF: a brick wall with a flame on top. */
+  firewall() {
+    const g = new THREE.Group();
+    const cols = ["#c0462c", "#d2573a", "#b83d25"];
+    for (let r = 0; r < 4; r++) {
+      const n = r % 2 === 0 ? 4 : 3;
+      const off = r % 2 === 0 ? 0 : 0.16;
+      for (let i = 0; i < n; i++) box(g, 0.32, 0.17, 0.4, cols[(i + r) % 3], -0.48 + off + i * 0.32 + (r % 2 === 0 ? 0 : 0.16), r * 0.18, 0, { r: 0.02 });
+    }
+    box(g, 1.3, 0.05, 0.44, "#7a2a18", 0, 0.72, 0, { r: 0.02 });
+    const flames = [[-0.2, 0.34], [0.05, 0.5], [0.3, 0.3]].map(([x, h], i) => {
+      const f = mesh(g, new THREE.ConeGeometry(0.14, h, 12), material(i === 1 ? "#ffb020" : "#ff7a1a", { emissive: "#ff5a00", ei: 0.9 }), x, 0.77 + h / 2, 0);
+      return { f, h, i };
+    });
+    return { group: g, tick: (t) => flames.forEach(({ f, h, i }) => { f.scale.y = 1 + Math.sin(t * 7 + i * 2) * 0.16; f.position.y = 0.77 + (h * f.scale.y) / 2; }) };
+  },
+
+  /** Virtual network: a hub joined to four nodes. */
+  network() {
+    const g = new THREE.Group();
+    cyl(g, 0.64, 0.66, 0.05, "#115e59", 0, 0, 0);
+    const hub = ball(g, 0.24, "#14b8a6", 0, 0.5, 0, { rough: 0.3 });
+    const outer: THREE.Mesh[] = [];
+    ([[0.5, 0.5], [-0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]] as const).forEach(([x, z], i) => {
+      between(g, [0, 0.5, 0], [x, 0.3 + i * 0.08, z], 0.03, "#5eead4");
+      outer.push(ball(g, 0.14, "#2dd4bf", x, 0.3 + i * 0.08, z, { emissive: "#0d9488", ei: 0.4 }));
+    });
+    torus(g, 0.5, 0.01, "#99f6e4", 0, 0.52, 0, [Math.PI / 2, 0, 0]);
+    return { group: g, tick: (t) => { hub.scale.setScalar(1 + Math.sin(t * 2) * 0.06); outer.forEach((o, i) => o.scale.setScalar(1 + Math.max(0, Math.sin(t * 2.6 - i * 1.2)) * 0.25)); } };
+  },
+
+  /** Data pipeline / ETL: a conveyor carrying crates through a processing gate. */
+  etl() {
+    const g = new THREE.Group();
+    box(g, 1.34, 0.14, 0.5, "#3b3f4a", 0, 0.1, 0, { r: 0.05 });
+    for (const x of [-0.62, 0.62]) { const r = cyl(g, 0.1, 0.1, 0.52, "#6b7280", x, 0.1, 0, { metal: 0.4 }); r.rotation.x = Math.PI / 2; r.position.y = 0.17; }
+    for (const x of [-0.5, 0.5]) box(g, 0.1, 0.1, 0.4, "#1f2937", x, 0, 0, { r: 0.02 });
+    box(g, 0.08, 0.7, 0.08, "#8b5cf6", -0.07, 0.22, 0.28, { r: 0.02 });
+    box(g, 0.08, 0.7, 0.08, "#8b5cf6", -0.07, 0.22, -0.28, { r: 0.02 });
+    box(g, 0.14, 0.12, 0.64, "#a78bfa", -0.07, 0.88, 0, { r: 0.03 });
+    const lamp = ball(g, 0.06, "#c4b5fd", -0.07, 0.98, 0, { emissive: "#a78bfa", ei: 1 });
+    const crates = [0, 1, 2].map((i) => box(g, 0.24, 0.24, 0.26, i === 1 ? "#34d399" : "#60a5fa", 0, 0.24, 0, { r: 0.03 }));
+    return {
+      group: g,
+      tick: (t) => {
+        crates.forEach((c, i) => {
+          const p = (((t * 0.22 + i / 3) % 1) + 1) % 1; // 0..1 along the belt
+          c.position.x = -0.6 + p * 1.2;
+          const through = p > 0.42 && p < 0.58; // inside the gate the crate is "being processed"
+          c.rotation.y = through ? t * 6 : 0;
+        });
+        lamp.scale.setScalar(1 + Math.sin(t * 5) * 0.2);
+      },
+    };
+  },
+
+  /** IoT device: a small circuit board with a chip and an antenna sending out waves. */
+  iot() {
+    const g = new THREE.Group();
+    box(g, 1.1, 0.1, 0.8, "#15803d", 0, 0, 0, { r: 0.03 });
+    box(g, 0.44, 0.16, 0.44, "#1f2937", -0.12, 0.1, 0.02, { r: 0.03 });
+    for (const x of [-0.4, 0.5]) box(g, 0.14, 0.1, 0.14, "#e6c04a", x, 0.1, 0.25, { r: 0.015, metal: 0.7 });
+    for (const x of [-0.3, 0.3]) box(g, 0.05, 0.02, 0.22, "#86efac", -0.1 + x * 0.3, 0.1, -0.25, { r: 0.005 });
+    cyl(g, 0.03, 0.03, 0.55, "#374151", 0.38, 0.1, -0.2);
+    ball(g, 0.06, "#ef4444", 0.38, 0.68, -0.2, { emissive: "#ef4444", ei: 0.9 });
+    const arcs = [0.2, 0.34, 0.48].map((r) => {
+      const a = torus(g, r, 0.016, "#38bdf8", 0.38, 0.68, -0.2, [0, 0, Math.PI / 2 - 0.9], 1.8, { emissive: "#38bdf8", ei: 0.7 });
+      return a;
+    });
+    return { group: g, tick: (t) => arcs.forEach((a, i) => { a.visible = Math.sin(t * 3 - i * 0.9) > -0.3; }) };
+  },
+
+  /** Archive / backup: a two drawer filing cabinet, the top drawer slides open now and then. */
+  archive() {
+    const g = new THREE.Group();
+    box(g, 0.9, 1.1, 0.64, "#64748b", 0, 0, 0, { r: 0.05 });
+    const drawers = [0, 1].map((i) => {
+      const d = new THREE.Group();
+      box(d, 0.8, 0.46, 0.04, "#8b9bb0", 0, 0, 0, { r: 0.03 });
+      box(d, 0.3, 0.05, 0.05, "#e2e8f0", 0, 0.2, 0.04, { r: 0.015, metal: 0.6 });
+      box(d, 0.22, 0.1, 0.012, "#f8fafc", 0, 0.08, 0.025, { r: 0.004 });
+      d.position.set(0, 0.07 + i * 0.52, 0.33);
+      g.add(d);
+      return d;
+    });
+    box(g, 0.94, 0.05, 0.68, "#475569", 0, 1.1, 0, { r: 0.02 });
+    return { group: g, tick: (t) => { drawers[1].position.z = 0.33 + Math.max(0, Math.sin(t * 1.1)) * 0.22; } };
+  },
+
+  /** File storage: a manila folder with papers sticking out. */
+  files() {
+    const g = new THREE.Group();
+    box(g, 1.2, 0.84, 0.1, "#d99512", 0, 0, -0.14, { r: 0.04 });
+    box(g, 0.5, 0.1, 0.1, "#d99512", -0.32, 0.84, -0.14, { r: 0.04 });
+    const sheets = [0, 1, 2].map((i) => box(g, 1.0, 0.74, 0.02, "#ffffff", 0, 0.08 + i * 0.03, -0.05 + i * 0.03, { r: 0.01, rough: 0.8 }));
+    box(g, 1.2, 0.62, 0.1, "#f6b21c", 0, 0, 0.16, { r: 0.04 });
+    plaque(g, "FILES", "#7a4b00", 0.7, 0, 0.3, 0.215);
+    return { group: g, tick: (t) => sheets.forEach((s, i) => { s.position.y = 0.34 + i * 0.03 + Math.sin(t * 1.5 + i) * 0.015; }) };
+  },
 };
 
 /**

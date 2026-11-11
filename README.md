@@ -8,7 +8,7 @@ original 2D glyphs.
 The look follows the **architecture board** style: one glyph per component type inside a dotted tile,
 the name underneath, right-angle arrows with small label pills, the key path in an accent colour,
 dashed lines for async or reply paths, and numbered purple step badges that tie the picture to a
-written "How it works" list. The 49 components and the dark and light theme tokens come from that style: each
+written "How it works" list. The 63 components and the dark and light theme tokens come from that style: each
 glyph exists as a hand-built 3D model (3D mode) and as the original flat drawing (2D mode).
 
 ## Access
@@ -51,6 +51,9 @@ Needs a browser with WebGL.
 | Logic blocks | The "Logic" section has flowchart blocks: Decision / condition (an amber diamond, for branches: connect two arrows out of it and label them "yes" and "no"), Start / end, Process / step, Loop / retry, Fork / join, Timer / schedule and Event / trigger. |
 | Networking | The "Networking" section has HTTP, REST API, WebSocket (two-way), Server-sent events (one-way stream) and Webhook, for labelling how components talk to each other. |
 | AI components | The "AI" section has AI model / agent, LLM, Agent / orchestrator, RAG pipeline, Embedding model, Retriever / reranker, Prompt / template, Guardrails, Tool / function call, Agent memory and MCP server. |
+| Cloud components | The "Cloud" section has Function / serverless, Container, Cluster / Kubernetes, Virtual network, DNS / domain, Firewall / WAF, Identity / IAM, Key / secrets, Data warehouse, Data pipeline / ETL, File storage, Archive / backup, Monitoring / alarm and IoT device. Cloud services from other tools are matched to these (SNS to Notifications, SQS and Pub/Sub to Queue, and so on). |
+| Zones | Press `Z` or click **Zone**, then drag out a rectangle on the floor (or click for a default one). A zone is a tinted, rounded area under the components, with a name and a colour, for marking a layer such as "BFF layer" or "Middleware". Drag its outline to move it: every component inside moves with it, including one sitting on its border (an entry point such as a gateway). Hold Alt to move the zone alone. Drag a corner to resize. Zones appear in 2D, 3D, PNG and GIF. |
+| Import from draw.io | The **draw.io** button opens a `.drawio` file (plain or compressed; pick the page if there are several) and builds a board from it. Rounded boxes and swimlanes around components become zones, text shapes become text boxes, cylinders and clouds become a database and a CDN, and cloud stencils and labels are matched to the closest component by `src/import/iconMap.ts`. Shapes that match nothing become a Service and are counted in the message. Undo restores the board you had. Try `samples/layers-example.drawio`. |
 | Two way arrows | Select an arrow and tick "Arrow heads at both ends" for a two way link. Flowing dots travel both ways. |
 | Export a GIF | The GIF button records one full turn of the 3D board when Auto is on, at the same slow pace as Auto itself (about 42 seconds, 8 frames per second, 1200 pixels wide, around 13 MB for a large board; it takes under a minute to make). With Auto off, and in 2D, the view stays still for a 3 second loop of the flowing arrows and idle model motion. Selection marks and the grid are left out. It is made in your browser with the small `gifenc` library. |
 | Auto-rotate | The Auto button (or R) keeps turning the 3D board. It pauses while you hold the pointer down. |
@@ -88,7 +91,8 @@ tiles are dropped on load.
 TypeScript, Vite and Three.js. No UI framework. Three layers, each usable without the one above it:
 
 - `src/model/` has the document, selection and undo history (snapshot based), and file parsing. No DOM, no Three.js.
-- `src/glyphs/` has the components: `models.ts` builds the 49 3D models from primitives, `flatIcons.ts` holds the original 2D drawings,
+- `src/import/` reads draw.io files: `xml.ts` is a small XML reader, `drawio.ts` turns pages into boards, `iconMap.ts` is the table that maps cloud services and labels to components.
+- `src/glyphs/` has the components: `models.ts` builds the 63 3D models from primitives, `flatIcons.ts` holds the original 2D drawings,
   and `thumbs.ts` renders the palette and legend pictures.
 - `functions/_middleware.js` is the server-side passphrase gate, and `gate-tests/` tests it.
 - `src/scene/` has the 3D view. `routing.ts` and `labels.ts` are pure and unit tested: they route arrows

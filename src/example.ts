@@ -49,6 +49,10 @@ export function exampleDoc(): DocData {
     nodes: nodes.map(([id, gx, gy, icon, label]): NodeData => ({ id, gx, gy, icon, label })),
     edges: edges.map(([from, to, o], i): EdgeData => ({ id: `e${i + 1}`, from, to, ...o })),
     texts: [],
+    zones: [
+      { id: "z1", gx: 1.5, gy: -0.75, w: 5.5, h: 3, label: "Browse and waiting room", color: "#4f8cff" },
+      { id: "z2", gx: 0.5, gy: 2.5, w: 5, h: 3, label: "Booking and payment", color: "#e0a526" },
+    ],
     steps: [
       "The waiting room admits users in batches (Kafka plus token status in Redis).",
       "Browse the seat map, then hold a seat with a 10 minute time to live.",

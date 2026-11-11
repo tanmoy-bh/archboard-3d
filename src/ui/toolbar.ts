@@ -7,6 +7,7 @@ import { UI_ICONS } from "./icons";
 export interface FileActions {
   newBoard(): void;
   openBoard(): void;
+  importDrawio(): void;
   saveBoard(): void;
   exportPng(): void;
   exportGif(): void;
@@ -25,6 +26,7 @@ export class Toolbar {
   private select!: HTMLButtonElement;
   private connect!: HTMLButtonElement;
   private textTool!: HTMLButtonElement;
+  private zoneTool!: HTMLButtonElement;
   private undo!: HTMLButtonElement;
   private redo!: HTMLButtonElement;
   private themeBtn!: HTMLButtonElement;
@@ -44,6 +46,7 @@ export class Toolbar {
     this.select = btn("select", "Select and move (V)", () => controller.setTool("select"), "Select");
     this.connect = btn("connect", "Connect two components (C)", () => controller.setTool("connect"), "Connect");
     this.textTool = btn("text", "Add a text box (X)", () => controller.setTool("text"), "Text");
+    this.zoneTool = btn("zone", "Draw a zone that groups components (Z). Drag out a rectangle, or click for a default one.", () => controller.setTool("zone"), "Zone");
     this.undo = btn("undo", "Undo (Cmd/Ctrl+Z)", () => store.undo());
     this.redo = btn("redo", "Redo (Shift+Cmd/Ctrl+Z)", () => store.redo());
     this.spinBtn = btn("orbit", "Auto-rotate the 3D board (R)", () => files.toggleAutoRotate(), "Auto");
@@ -61,7 +64,7 @@ export class Toolbar {
       { class: "toolbar" },
       h("div", { class: "brand" }, h("span", { class: "logo", "aria-hidden": "true" }, "◧"), h("strong", {}, "Archboard 3D")),
       sep(),
-      this.select, this.connect, this.textTool,
+      this.select, this.connect, this.textTool, this.zoneTool,
       sep(),
       this.undo, this.redo,
       sep(),
@@ -78,6 +81,7 @@ export class Toolbar {
       btn("trash", "Remove everything from the board. Undo brings it back.", files.clearAll, "Clear"),
       btn("file", "New empty board", files.newBoard, "New"),
       btn("open", "Open a board from a JSON file", files.openBoard, "Open"),
+      btn("importFile", "Import a draw.io (.drawio) diagram and turn it into a board", files.importDrawio, "draw.io"),
       btn("save", "Save the board as a JSON file", files.saveBoard, "Save"),
       btn("image", "Export a PNG image", files.exportPng, "PNG"),
       btn("film", "Export an animated GIF. Turns the board once if Auto is on, otherwise the view stays still", files.exportGif, "GIF"),
@@ -99,6 +103,7 @@ export class Toolbar {
     this.select.classList.toggle("active", this.controller.tool === "select");
     this.connect.classList.toggle("active", this.controller.tool === "connect");
     this.textTool.classList.toggle("active", this.controller.tool === "text");
+    this.zoneTool.classList.toggle("active", this.controller.tool === "zone");
     const spinning = this.view.autoRotate;
     this.spinBtn.classList.toggle("active", spinning && mode === "3d");
     this.spinBtn.setAttribute("aria-pressed", String(spinning && mode === "3d"));

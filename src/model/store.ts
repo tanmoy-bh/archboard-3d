@@ -1,4 +1,4 @@
-import { DocData, EdgeData, IconKey, NODE_MIN_GAP, NodeData, TextData, emptyDoc, genId, snap } from "./types";
+import { DocData, EdgeData, IconKey, NODE_MIN_GAP, NodeData, TextData, ZONE_COLORS, ZONE_MIN, ZoneData, emptyDoc, genId, snap } from "./types";
 
 export type ChangeKind = "doc" | "selection";
 export type Listener = (kind: ChangeKind) => void;
@@ -24,6 +24,7 @@ export class Store {
   constructor(initial: DocData = emptyDoc()) {
     this.doc = structuredClone(initial);
     this.doc.texts ??= [];
+    this.doc.zones ??= [];
   }
 
   subscribe(fn: Listener): () => void {
@@ -41,9 +42,10 @@ export class Store {
   node(id: string): NodeData | undefined { return this.doc.nodes.find((n) => n.id === id); }
   edge(id: string): EdgeData | undefined { return this.doc.edges.find((e) => e.id === id); }
   textBox(id: string): TextData | undefined { return this.doc.texts.find((t) => t.id === id); }
+  zone(id: string): ZoneData | undefined { return this.doc.zones.find((z) => z.id === id); }
 
-  /** Everything the user can put on the board: tiles, arrows and text boxes. */
-  get itemCount(): number { return this.doc.nodes.length + this.doc.edges.length + this.doc.texts.length; }
+  /** Everything the user can put on the board: tiles, arrows, text boxes and zones. */
+  get itemCount(): number { return this.doc.nodes.length + this.doc.edges.length + this.doc.texts.length + this.doc.zones.length; }
 
   // ---------------------------------------------------------------- mutation
 
@@ -112,6 +114,7 @@ export class Store {
   load(doc: DocData): void {
     this.doc = structuredClone(doc);
     this.doc.texts ??= []; // boards built before text boxes existed
+    this.doc.zones ??= []; // and before zones
     this.undoStack = [];
     this.redoStack = [];
     this.txBase = null;
@@ -128,7 +131,7 @@ export class Store {
   }
 
   private pruneSelection(): boolean {
-    const ids = new Set<string>([...this.doc.nodes.map((n) => n.id), ...this.doc.edges.map((e) => e.id), ...this.doc.texts.map((t) => t.id)]);
+    const ids = new Set<string>([...this.doc.nodes.map((n) => n.id), ...this.doc.edges.map((e) => e.id), ...this.doc.texts.map((t) => t.id), ...this.doc.zones.map((z) => z.id)]);
     let changed = false;
     for (const id of [...this.selection]) {
       if (!ids.has(id)) { this.selection.delete(id); changed = true; }
@@ -157,7 +160,7 @@ export class Store {
   }
 
   selectAll(): void {
-    this.selection = new Set([...this.doc.nodes.map((n) => n.id), ...this.doc.texts.map((t) => t.id)]);
+    this.selection = new Set([...this.doc.nodes.map((n) => n.id), ...this.doc.texts.map((t) => t.id), ...this.doc.zones.map((z) => z.id)]);
     this.emit("selection");
   }
 
@@ -214,10 +217,37 @@ export class Store {
     return id;
   }
 
-  /** Remove every tile, arrow and text box. The title and step list stay. One undo step brings it all back. */
+  /** Add a zone and select it. The size is clamped to the minimum and everything snaps to half cells. */
+  addZone(gx: number, gy: number, w: number, h: number, label = "Zone", color?: string): string {
+    const id = genId("z");
+    const c = color ?? ZONE_COLORS[this.doc.zones.length % ZONE_COLORS.length];
+    this.mutate((d) => { d.zones.push({ id, gx: snap(gx), gy: snap(gy), w: Math.max(ZONE_MIN, snap(w)), h: Math.max(ZONE_MIN, snap(h)), label, color: c }); });
+    this.select([id]);
+    return id;
+  }
+
+  /**
+   * Swap the whole board for `doc` as ONE undoable step (an import, say). Unlike `load` it keeps the history,
+   * so a single undo brings the previous board back.
+   */
+  replace(doc: DocData): void {
+    const next = structuredClone(doc);
+    this.mutate((d) => {
+      d.title = next.title;
+      d.nodes = next.nodes;
+      d.edges = next.edges;
+      d.texts = next.texts;
+      d.zones = next.zones ?? [];
+      d.steps = next.steps;
+    });
+    this.selection.clear();
+    this.emit("selection");
+  }
+
+  /** Remove every tile, arrow, text box and zone. The title and step list stay. One undo step brings it all back. */
   clearAll(): boolean {
     if (this.itemCount === 0) return false;
-    this.mutate((d) => { d.nodes = []; d.edges = []; d.texts = []; });
+    this.mutate((d) => { d.nodes = []; d.edges = []; d.texts = []; d.zones = []; });
     return true;
   }
 
@@ -226,6 +256,7 @@ export class Store {
     const sel = new Set(this.selection);
     this.mutate((d) => {
       d.texts = d.texts.filter((t) => !sel.has(t.id));
+      d.zones = d.zones.filter((z) => !sel.has(z.id));
       d.nodes = d.nodes.filter((n) => !sel.has(n.id));
       d.edges = d.edges.filter((e) => !sel.has(e.id) && !sel.has(e.from) && !sel.has(e.to));
     });
@@ -235,7 +266,8 @@ export class Store {
   duplicateSelected(): void {
     const picked = this.doc.nodes.filter((n) => this.selection.has(n.id));
     const pickedTexts = this.doc.texts.filter((t) => this.selection.has(t.id));
-    if (picked.length === 0 && pickedTexts.length === 0) return;
+    const pickedZones = this.doc.zones.filter((z) => this.selection.has(z.id));
+    if (picked.length === 0 && pickedTexts.length === 0 && pickedZones.length === 0) return;
     const map = new Map<string, string>();
     const created: string[] = [];
     this.mutate((d) => {
@@ -252,6 +284,11 @@ export class Store {
         const id = genId("t");
         created.push(id);
         d.texts.push({ ...t, id, gx: t.gx + 1, gy: t.gy + 1 });
+      }
+      for (const z of pickedZones) {
+        const id = genId("z");
+        created.push(id);
+        d.zones.push({ ...z, id, gx: z.gx + 1, gy: z.gy + 1 });
       }
     });
     this.select(created);

@@ -126,6 +126,24 @@ export class TextureFactory {
     });
   }
 
+  /** A zone's name: bold small text in the zone colour, with a halo in the board colour so it stays readable. */
+  zoneLabel(text: string, color: string): TexInfo {
+    const font = `700 13px ${FONT}`;
+    const t = text.length > 60 ? text.slice(0, 59) + "…" : text;
+    const w = Math.ceil(measure(font, t)) + 14, h = 24;
+    return this.canvasTex(`zone:${color}:${t}`, w, h, (c) => {
+      c.font = font;
+      c.textAlign = "left";
+      c.textBaseline = "middle";
+      c.lineJoin = "round";
+      c.strokeStyle = this.theme.board;
+      c.lineWidth = 4.5;
+      c.strokeText(t, 7, h / 2 + 0.5);
+      c.fillStyle = color;
+      c.fillText(t, 7, h / 2 + 0.5);
+    });
+  }
+
   /** Accent outline drawn around a selected or hovered text box. Includes room for the glow. */
   textOutline(w: number, h: number): TexInfo {
     const m = 8;

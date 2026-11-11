@@ -1,6 +1,7 @@
 import "./style.css";
 import { exampleDoc } from "./example";
 import { Controller } from "./interaction/controller";
+import { describeReport, importDrawio as readDrawio, listPages } from "./import/drawio";
 import { parseDoc, stringifyDoc } from "./model/serialize";
 import { Store } from "./model/store";
 import { emptyDoc } from "./model/types";
@@ -110,6 +111,35 @@ function boot(): void {
           toast(`Opened "${store.doc.title}".`);
         } catch (e) {
           toast(e instanceof Error ? e.message : "Could not open that file.", "error");
+        }
+      });
+      input.click();
+    },
+    importDrawio() {
+      const input = h("input", { type: "file", accept: ".drawio,.xml,text/xml,application/xml" });
+      input.addEventListener("change", async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          if (file.size > 20 * 1048576) throw new Error("That file is larger than 20 MB, too big to import.");
+          const text = await file.text();
+          const names = await listPages(text);
+          let index = 0;
+          if (names.length > 1) {
+            const answer = prompt(`This file has ${names.length} pages:\n${names.map((n, i) => `${i + 1}. ${n}`).join("\n")}\n\nWhich page should be imported? Type its number.`, "1");
+            if (answer === null) return;
+            index = Number(answer) - 1;
+            if (!Number.isInteger(index) || index < 0 || index >= names.length) throw new Error("That is not one of the pages.");
+          }
+          const { doc, report } = await readDrawio(text, index);
+          if (store.itemCount > 0 && !confirm(`Replace the current board with "${report.page}" from draw.io? You can undo this with Cmd/Ctrl+Z.`)) return;
+          const base = file.name.replace(/\.(drawio|xml)$/i, "");
+          doc.title = names.length > 1 ? `${base}: ${report.page}` : base || report.page;
+          store.replace(doc);
+          view.fit();
+          toast(describeReport(report));
+        } catch (e) {
+          toast(e instanceof Error ? e.message : "Could not import that file.", "error");
         }
       });
       input.click();

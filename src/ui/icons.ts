@@ -24,6 +24,8 @@ export const UI_ICONS = {
   orbit: wrap('<ellipse cx="12" cy="12" rx="9" ry="4.5"/><path d="M17.2 8.2l2.6 2.3-3.3.9"/><circle cx="12" cy="12" r="1.8"/>'),
   chevron: wrap('<path d="M6 9l6 6 6-6"/>'),
   film: wrap('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14M3 9.5h5M3 14.5h5M16 9.5h5M16 14.5h5"/>'),
+  zone: wrap('<rect x="3" y="5" width="18" height="14" rx="4" stroke-dasharray="3 2.4"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/>'),
+  importFile: wrap('<path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/><path d="M5 17v4M19 17v4"/>'),
   trash: wrap('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
   swap: wrap('<path d="M7 4L3 8l4 4"/><path d="M3 8h13"/><path d="M17 20l4-4-4-4"/><path d="M21 16H8"/>'),
 };

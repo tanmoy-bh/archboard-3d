@@ -13,6 +13,8 @@ import { NODE_PICK_HEIGHT, NodeView } from "./nodeView";
 import { Rect, labelAnchor, routeAll } from "./routing";
 import { Ctx, TextureFactory } from "./textures";
 import { TextView } from "./textView";
+import { Corner, ZoneView } from "./zoneView";
+import { zonesBigFirst } from "../model/zones";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -31,6 +33,7 @@ export class SceneView {
   private nodes = new Map<string, NodeView>();
   private edges = new Map<string, EdgeView>();
   private texts = new Map<string, TextView>();
+  private zones = new Map<string, ZoneView>();
   private floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private grid: THREE.GridHelper;
   private hemi = new THREE.HemisphereLight();
@@ -40,6 +43,7 @@ export class SceneView {
   private hoverNode: string | null = null;
   private hoverEdge: string | null = null;
   private hoverText: string | null = null;
+  private hoverZone: string | null = null;
 
   private mode: ViewMode = "3d";
   private elev = ELEVATION; // camera tilt above the ground, animated between the two modes
@@ -101,6 +105,7 @@ export class SceneView {
     for (const n of this.nodes.values()) n.applyTheme(this.ctx);
     for (const e of this.edges.values()) e.applyTheme(this.ctx);
     for (const t of this.texts.values()) t.applyTheme(this.ctx);
+    for (const z of this.zones.values()) z.applyTheme(this.ctx);
     this.ghost?.applyTheme(this.ctx);
     this.sync();
     old.dispose();
@@ -139,6 +144,7 @@ export class SceneView {
     this.camera.bottom = -FRUSTUM_H / 2;
     this.updateCamera();
     for (const e of this.edges.values()) e.setResolution(w, h);
+    for (const z of this.zones.values()) z.setResolution(w, h);
     (this.rubber?.material as LineMaterial | undefined)?.resolution.set(w, h);
   }
 
@@ -218,8 +224,8 @@ export class SceneView {
 
   /** Screen-space extent (right and up, in world units) of everything on the board, seen from azimuth `az`. */
   private boardBounds(az: number, e = this.elevTarget): { minR: number; maxR: number; minU: number; maxU: number } | null {
-    const { nodes, texts } = this.store.doc;
-    if (nodes.length === 0 && texts.length === 0) return null;
+    const { nodes, texts, zones } = this.store.doc;
+    if (nodes.length === 0 && texts.length === 0 && zones.length === 0) return null;
     const r3 = [Math.cos(az), -Math.sin(az)]; // screen-right in the ground plane (x, z)
     const up3 = [-Math.sin(e) * Math.sin(az), Math.cos(e), -Math.sin(e) * Math.cos(az)];
     let minR = Infinity, maxR = -Infinity, minU = Infinity, maxU = -Infinity;
@@ -231,6 +237,12 @@ export class SceneView {
       for (const dx of [-HALF, HALF]) for (const dz of [-HALF, HALF]) for (const y of [0, NODE_PICK_HEIGHT]) {
         const x = n.gx * SP + dx, z = n.gy * SP + dz;
         grow(x * r3[0] + z * r3[1], x * up3[0] + y * up3[1] + z * up3[2]);
+      }
+    }
+    for (const z of zones) {
+      for (const gx of [z.gx, z.gx + z.w]) for (const gy of [z.gy, z.gy + z.h]) {
+        const x = gx * SP, zz = gy * SP;
+        grow(x * r3[0] + zz * r3[1], x * up3[0] + zz * up3[2]);
       }
     }
     // Text boxes are screen-facing, so their extent is a rectangle around their centre in screen space.
@@ -258,12 +270,13 @@ export class SceneView {
 
   /** Middle of everything on the board, on the ground plane. Null when the board is empty. */
   private groundCentre(): { x: number; z: number } | null {
-    const { nodes, texts } = this.store.doc;
-    if (nodes.length === 0 && texts.length === 0) return null;
+    const { nodes, texts, zones } = this.store.doc;
+    if (nodes.length === 0 && texts.length === 0 && zones.length === 0) return null;
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     const grow = (x: number, z: number) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
     for (const n of nodes) { grow(n.gx * SP - HALF, n.gy * SP - HALF); grow(n.gx * SP + HALF, n.gy * SP + HALF); }
     for (const t of texts) grow(t.gx * SP, t.gy * SP);
+    for (const z of zones) { grow(z.gx * SP, z.gy * SP); grow((z.gx + z.w) * SP, (z.gy + z.h) * SP); }
     return { x: (x0 + x1) / 2, z: (z0 + z1) / 2 };
   }
 
@@ -361,7 +374,34 @@ export class SceneView {
     return best;
   }
 
-  setHover(nodeId: string | null, edgeId: string | null, textId: string | null = null): void {
+  /**
+   * The zone under the pointer, if any. A zone is picked by its outline band or its name, never by its empty
+   * inside, so panning and deselecting still work over a zone. Smaller (nested) zones win.
+   */
+  pickZone(clientX: number, clientY: number): string | null {
+    const g = this.groundPoint(clientX, clientY);
+    const p = this.ndc(clientX, clientY);
+    for (const z of [...zonesBigFirst(this.store.doc.zones)].reverse()) {
+      const v = this.zones.get(z.id);
+      if (!v) continue;
+      if ((g && v.hitBand(g.x, g.z)) || v.hitLabel(this.camera, p.x, p.y)) return z.id;
+    }
+    return null;
+  }
+
+  /** The corner handle of a zone under the pointer. */
+  pickZoneCorner(zoneId: string, clientX: number, clientY: number): Corner | null {
+    const g = this.groundPoint(clientX, clientY);
+    const v = this.zones.get(zoneId);
+    return g && v ? v.hitCorner(g.x, g.z, 0.4 * SP / Math.max(0.6, this.zoom)) : null;
+  }
+
+  setHover(nodeId: string | null, edgeId: string | null, textId: string | null = null, zoneId: string | null = null): void {
+    if (zoneId !== this.hoverZone) {
+      this.zones.get(this.hoverZone ?? "")?.setHover(false);
+      this.hoverZone = zoneId;
+      this.zones.get(zoneId ?? "")?.setHover(true);
+    }
     if (textId !== this.hoverText) {
       this.texts.get(this.hoverText ?? "")?.setHover(false);
       this.hoverText = textId;
@@ -480,6 +520,20 @@ export class SceneView {
       }
     }
     for (const [id, v] of this.texts) if (!liveTexts.has(id)) { v.dispose(); this.texts.delete(id); }
+    const liveZones = new Set<string>();
+    for (const z of doc.zones) {
+      liveZones.add(z.id);
+      const v = this.zones.get(z.id);
+      if (v) v.setData(z);
+      else {
+        const zv = new ZoneView(z, this.ctx);
+        zv.setResolution(this.size.x, this.size.y);
+        this.zones.set(z.id, zv);
+        this.scene.add(zv.group);
+      }
+    }
+    for (const [id, v] of this.zones) if (!liveZones.has(id)) { v.dispose(); this.zones.delete(id); }
+    zonesBigFirst(doc.zones).forEach((z, i) => this.zones.get(z.id)?.setOrder(i));
     this.syncSelection();
   }
 
@@ -488,6 +542,7 @@ export class SceneView {
     for (const [id, v] of this.nodes) v.setSelected(sel.has(id));
     for (const [id, v] of this.edges) v.setSelected(sel.has(id));
     for (const [id, v] of this.texts) v.setSelected(sel.has(id));
+    for (const [id, v] of this.zones) v.setSelected(sel.has(id));
   }
 
   // ------------------------------------------------------------------- loop
@@ -543,6 +598,7 @@ export class SceneView {
       for (const n of this.nodes.values()) n.setChromeVisible(v);
       for (const e of this.edges.values()) e.setChromeVisible(v);
       for (const t of this.texts.values()) t.setChromeVisible(v);
+      for (const z of this.zones.values()) z.setChromeVisible(v);
       if (this.ghost) this.ghost.group.visible = v;
       if (this.rubber) this.rubber.visible = v;
       this.grid.visible = v;
@@ -560,6 +616,7 @@ export class SceneView {
       const onScreen = (this.size.y / FRUSTUM_H) * saved.zoom;
       const s = ppu / onScreen;
       for (const e of this.edges.values()) e.setResolution(W / s, H / s);
+      for (const z of this.zones.values()) z.setResolution(W / s, H / s);
       this.renderer.render(this.scene, this.camera);
       return this.canvas.toDataURL("image/png");
     } finally {
@@ -601,6 +658,7 @@ export class SceneView {
       for (const n of this.nodes.values()) n.setChromeVisible(v);
       for (const ed of this.edges.values()) ed.setChromeVisible(v);
       for (const t of this.texts.values()) t.setChromeVisible(v);
+      for (const z of this.zones.values()) z.setChromeVisible(v);
       if (this.ghost) this.ghost.group.visible = v;
       if (this.rubber) this.rubber.visible = v;
       this.grid.visible = v;
@@ -616,6 +674,7 @@ export class SceneView {
       const onScreen = (this.size.y / FRUSTUM_H) * saved.zoom;
       const s = W / bw / onScreen; // keep stroke weights the same as on screen
       for (const ed of this.edges.values()) ed.setResolution(W / s, H / s);
+      for (const z of this.zones.values()) z.setResolution(W / s, H / s);
 
       const copy = document.createElement("canvas");
       copy.width = W; copy.height = H;
@@ -665,6 +724,7 @@ export class SceneView {
     for (const n of this.nodes.values()) n.dispose();
     for (const e of this.edges.values()) e.dispose();
     for (const t of this.texts.values()) t.dispose();
+    for (const z of this.zones.values()) z.dispose();
     this.ctx.tex.dispose();
     this.renderer.dispose();
     this.canvas.remove();

@@ -1,6 +1,6 @@
 import { ICON_NAMES } from "../glyphs/catalog";
 import type { Store } from "../model/store";
-import { ICON_KEYS, IconKey, TEXT_MAX_LENGTH, TEXT_SIZES, TEXT_SIZE_NAMES, isIconKey, isTextSize, snap } from "../model/types";
+import { ICON_KEYS, IconKey, TEXT_MAX_LENGTH, TEXT_SIZES, TEXT_SIZE_NAMES, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, isHexColor, isIconKey, isTextSize, snap } from "../model/types";
 import { h, svg } from "./dom";
 import { UI_ICONS } from "./icons";
 
@@ -30,7 +30,7 @@ export class Inspector {
 
   private signatureNow(): string {
     const sel = [...this.store.selection].sort();
-    const kind = sel.length === 1 ? (this.store.node(sel[0]) ? "n" : this.store.edge(sel[0]) ? "e" : this.store.textBox(sel[0]) ? "t" : "x") : "";
+    const kind = sel.length === 1 ? (this.store.node(sel[0]) ? "n" : this.store.edge(sel[0]) ? "e" : this.store.textBox(sel[0]) ? "t" : this.store.zone(sel[0]) ? "z" : "x") : "";
     return `${sel.join(",")}|${kind}`;
   }
 
@@ -46,6 +46,7 @@ export class Inspector {
     if (this.store.node(sel[0])) return this.renderNode(sel[0]);
     if (this.store.edge(sel[0])) return this.renderEdge(sel[0]);
     if (this.store.textBox(sel[0])) return this.renderText(sel[0]);
+    if (this.store.zone(sel[0])) return this.renderZone(sel[0]);
   }
 
   // ------------------------------------------------------------- field helpers
@@ -106,7 +107,7 @@ export class Inspector {
         "dl",
         { class: "keys" },
         ...[
-          ["V / C / X", "Select / connect / text tool"],
+          ["V / C / X / Z", "Select / connect / text / zone tool"],
           ["Q / E", "Rotate the view"],
           ["R", "Auto-rotate the 3D board"],
           ["T", "Switch between 3D and 2D"],
@@ -116,6 +117,7 @@ export class Inspector {
           ["Cmd/Ctrl+Z", "Undo (add Shift to redo)"],
           ["Arrow keys", "Nudge (Shift for a full cell)"],
           ["Double click", "Rename"],
+          ["Alt + drag a zone", "Move the zone alone"],
           ["Space + drag", "Pan (so do right and middle drag)"],
           ["Esc", "Cancel / deselect"],
         ].flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]),
@@ -194,6 +196,46 @@ export class Inspector {
         this.field("Column", this.number(() => box().gx, move("gx"), 0.5)),
         this.field("Row", this.number(() => box().gy, move("gy"), 0.5))),
       h("p", { class: "muted" }, "Text boxes are labels for the picture. Arrows connect components, not text."),
+      this.action("sparkle", "Duplicate", () => this.store.duplicateSelected()),
+      this.action("trash", "Delete", () => this.store.deleteSelected(), true),
+    );
+  }
+
+  private renderZone(id: string): void {
+    const zone = () => this.store.zone(id)!;
+    const patch = (fn: (z: ReturnType<typeof zone>) => void, key?: string) =>
+      this.store.mutate((d) => { const z = d.zones.find((x) => x.id === id); if (z) fn(z); }, key);
+
+    const label = this.text(() => zone().label, (v) => patch((z) => { z.label = v.slice(0, ZONE_LABEL_MAX); }, "zlabel:" + id), "Zone name, such as BFF layer");
+    this.focusTarget = label;
+
+    const swatches = h("div", { class: "swatches", role: "group", "aria-label": "Zone colour" });
+    const paint = (c: string) => patch((z) => { z.color = c; });
+    for (const c of ZONE_COLORS) {
+      const b = h("button", { type: "button", class: "swatch", title: c, "aria-label": `Colour ${c}`, style: `background:${c}`, onclick: () => paint(c) });
+      swatches.append(b);
+    }
+    const custom = h("input", { type: "color", class: "swatch-input", "aria-label": "Custom colour" });
+    custom.value = zone().color;
+    custom.addEventListener("input", () => { if (isHexColor(custom.value)) patch((z) => { z.color = custom.value.toLowerCase(); }, "zcolor:" + id); });
+    this.refreshers.push(() => { if (document.activeElement !== custom) custom.value = zone().color; });
+    swatches.append(custom);
+
+    const set = (key: "gx" | "gy" | "w" | "h") => (v: number | undefined) => {
+      if (v === undefined || !Number.isFinite(v)) return;
+      patch((z) => { z[key] = key === "w" || key === "h" ? Math.max(ZONE_MIN, snap(v)) : snap(v); });
+    };
+
+    this.body.append(
+      this.field("Name", label),
+      h("div", { class: "field" }, h("span", {}, "Colour"), swatches), // not a label: a label would click the first swatch
+      h("div", { class: "row2" },
+        this.field("Column", this.number(() => zone().gx, set("gx"), 0.5)),
+        this.field("Row", this.number(() => zone().gy, set("gy"), 0.5))),
+      h("div", { class: "row2" },
+        this.field("Width", this.number(() => zone().w, set("w"), 0.5, ZONE_MIN)),
+        this.field("Height", this.number(() => zone().h, set("h"), 0.5, ZONE_MIN))),
+      h("p", { class: "muted" }, "A zone groups components. Dragging it moves everything inside, including a component sitting on its border. Hold Alt to move the zone alone. Drag a corner to resize."),
       this.action("sparkle", "Duplicate", () => this.store.duplicateSelected()),
       this.action("trash", "Delete", () => this.store.deleteSelected(), true),
     );
