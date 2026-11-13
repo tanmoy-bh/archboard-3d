@@ -1,4 +1,4 @@
-import { DocData, EdgeData, NodeData, TEXT_MAX_LENGTH, TextData, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, ZoneData, genId, isHexColor, isIconKey, isShareId, isTextSize, snap } from "./types";
+import { DocData, EdgeData, NodeData, TEXT_MAX_LENGTH, TextData, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, ZoneData, genId, isHexColor, isBoardId, isIconKey, isTextSize, snap } from "./types";
 
 export function stringifyDoc(doc: DocData): string {
   return JSON.stringify(doc, null, 2);
@@ -100,6 +100,7 @@ export function parseDoc(text: string): DocData {
   const steps = Array.isArray(raw.steps) ? raw.steps.filter((s): s is string => typeof s === "string") : [];
   const title = typeof raw.title === "string" && raw.title ? raw.title : "Untitled architecture";
   const doc: DocData = { version: 1, title, nodes, edges, texts, zones, steps };
-  if (isShareId(raw.shareId)) doc.shareId = raw.shareId;
+  const bid = raw.boardId ?? raw.shareId; // older files called it shareId
+  if (isBoardId(bid)) doc.boardId = bid;
   return doc;
 }

@@ -79,11 +79,11 @@ test("the viewer, its scripts, example files, board reads and short links are pu
 });
 
 test("the editor, the owner's routes and every write stay behind the passphrase", async () => {
-  for (const path of ["/", "/index.html", "/api/diagrams", "/api/diagrams/abcdefghijkl", "/api/dx", "/viewer", "/views/", "/diagramsx/a.json"]) {
+  for (const path of ["/", "/index.html", "/api/diagrams", "/api/diagrams/abcdefghijkl", "/api/diagrams/abcdefghijkl/shared", "/api/dx", "/viewer", "/views/", "/diagramsx/a.json"]) {
     const res = await call(path);
     assert.equal(res.status, 401, path);
   }
-  for (const [method, path] of [["POST", "/api/d/abcdefghijkl"], ["PUT", "/api/diagrams/abcdefghijkl"], ["DELETE", "/api/diagrams/abcdefghijkl"], ["POST", "/api/diagrams"], ["POST", "/v/abcdefghijkl"]]) {
+  for (const [method, path] of [["POST", "/api/d/abcdefghijkl"], ["PUT", "/api/diagrams/abcdefghijkl"], ["DELETE", "/api/diagrams/abcdefghijkl"], ["POST", "/api/diagrams"], ["POST", "/api/diagrams/abcdefghijkl/shared"], ["POST", "/v/abcdefghijkl"]]) {
     const res = await call(path, { method, body: "{}" });
     assert.equal(res.status, 401, `${method} ${path}`);
   }

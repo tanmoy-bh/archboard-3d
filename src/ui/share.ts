@@ -1,23 +1,24 @@
 import type { Store } from "../model/store";
-import { parseDoc } from "../model/serialize";
-import type { DocData } from "../model/types";
-import { Published, fetchPublishedText, listPublished, publish, unpublish, updatePublished } from "../share/api";
+import { BoardInfo, ApiError, listBoards, setShared } from "../share/api";
 import { packDoc } from "../share/codec";
+import { saveCurrent } from "../share/library";
 import { ViewOpts, ViewTheme, embedCode, packedLink, shortLink } from "../share/links";
 import { copyText, openDialog } from "./dialog";
 import { h, svg } from "./dom";
 import { UI_ICONS } from "./icons";
+import { sharedPill } from "./saved";
 
 export interface ShareCtx {
   store: Store;
   toast: (message: string, kind?: "info" | "error") => void;
-  /** Put a published board on the editor, replacing the current one (the caller confirms and keeps undo). */
-  openDoc: (doc: DocData) => void;
 }
 
 const LONG_LINK = 8000;
 
-/** The Share window: a link that carries the diagram, a short link you can update, and embed code for both. */
+/**
+ * The Share window. It is an action, not a list: one button turns sharing on for this board, and then it shows the
+ * link and the embed code. Boards that are shared or only saved are all listed under Saved.
+ */
 export function openShare(ctx: ShareCtx): void {
   const { store, toast } = ctx;
   const page = location.href;
@@ -45,7 +46,64 @@ export function openShare(ctx: ShareCtx): void {
     h("label", { class: "field" }, h("span", {}, "Embed height (px)"), heightIn),
     h("label", { class: "check" }, playChk, h("span", {}, "Start turning (3D)")));
 
-  // ---------------------------------------------------- link that holds the board
+  // ---------------------------------------------------------- the share action
+  const action = h("div", {});
+  let info: BoardInfo | null = null;
+  let state: "loading" | "ready" | "unavailable" | "error" = "loading";
+  let errorText = "";
+  let busy = false;
+
+  const load = async () => {
+    state = "loading"; renderAction();
+    try {
+      const all = await listBoards(page);
+      info = all.find((b) => b.id === store.doc.boardId) ?? null;
+      state = "ready";
+    } catch (e) {
+      state = e instanceof ApiError && e.unavailable ? "unavailable" : "error";
+      errorText = e instanceof Error ? e.message : "Could not check the sharing status.";
+    }
+    renderAction();
+  };
+
+  const run = async (label: string, job: () => Promise<void>) => {
+    if (busy) return;
+    busy = true; renderAction();
+    try { await job(); await load(); }
+    catch (e) { toast(e instanceof Error ? e.message : `Could not ${label}.`, "error"); }
+    busy = false; renderAction();
+  };
+
+  function renderAction(): void {
+    const disable = () => { for (const b of action.querySelectorAll("button")) (b as HTMLButtonElement).disabled = busy; };
+    if (state === "loading") { action.replaceChildren(h("p", { class: "muted" }, "Checking.")); return; }
+    if (state === "unavailable") {
+      action.replaceChildren(h("p", { class: "muted" }, "Sharing a board with a link you can update needs the deployed site. The link below, which carries the diagram inside it, works anywhere."));
+      return;
+    }
+    if (state === "error") { action.replaceChildren(h("p", { class: "muted" }, errorText), button("sparkle", "Try again", () => void load())); return; }
+
+    if (!info?.shared) {
+      action.replaceChildren(
+        h("p", { class: "muted" }, "Sharing saves this board and gives anyone with the link a view-only copy: the real 3D models, a 3D and 2D switch, turn, zoom and full screen. Nobody can edit it. You can stop at any time."),
+        button("share", busy ? "Sharing…" : "Share this board", () => run("share", async () => { await saveCurrent(page, store, true); toast("Shared. Copy the link."); }), " primary"));
+      disable();
+      return;
+    }
+    const link = shortLink(page, info.id, viewOpts());
+    action.replaceChildren(
+      h("div", { class: "saved-name" }, sharedPill(), h("span", { class: "muted" }, "Anyone with this link can view it. It is also in your Saved boards.")),
+      h("input", { type: "text", readonly: true, class: "share-link", value: link, "aria-label": "Short link" }),
+      h("div", {},
+        button("copy", "Copy link", () => copy(link, "Link")),
+        button("copy", "Copy embed code", () => copy(embedCode(link, store.doc.title, opts.height), "Embed code")),
+        button("share", "Open", () => window.open(link, "_blank", "noopener")),
+        button("sparkle", busy ? "Working…" : "Update the shared version", () => run("update", async () => { await saveCurrent(page, store); toast("The link now shows this version. It can take half a minute to appear everywhere."); }), " primary"),
+        button("trash", "Stop sharing", () => run("stop sharing", async () => { await setShared(page, info!.id, false); toast("No longer shared. The board is still saved."); }), " danger")));
+    disable();
+  }
+
+  // ---------------------------------------------- link that holds the diagram
   const linkBox = h("input", { type: "text", readonly: true, class: "share-link", "aria-label": "Link that holds the diagram" });
   const linkNote = h("p", { class: "muted" }, "Making the link.");
   let packedUrl = "";
@@ -54,15 +112,14 @@ export function openShare(ctx: ShareCtx): void {
       packedUrl = packedLink(page, await packDoc(store.doc), viewOpts());
       linkBox.value = packedUrl;
       linkNote.textContent = packedUrl.length > LONG_LINK
-        ? `${packedUrl.length.toLocaleString()} characters is long for a link. Publish it below for a short one.`
+        ? `${packedUrl.length.toLocaleString()} characters is long for a link. Share it above for a short one.`
         : `${packedUrl.length.toLocaleString()} characters. The diagram travels inside the link, so nothing is stored anywhere. Changing the board later means sharing a new link.`;
     } catch (e) {
-      packedUrl = "";
-      linkBox.value = "";
+      packedUrl = ""; linkBox.value = "";
       linkNote.textContent = e instanceof Error ? e.message : "Could not make the link.";
     }
   };
-  const quick = section("Link that holds the diagram",
+  const quick = section("Or a link that holds the diagram",
     linkBox,
     h("div", {},
       button("copy", "Copy link", () => packedUrl && copy(packedUrl, "Link")),
@@ -70,85 +127,14 @@ export function openShare(ctx: ShareCtx): void {
       button("share", "Open", () => packedUrl && window.open(packedUrl, "_blank", "noopener"))),
     linkNote);
 
-  // ----------------------------------------------------------- published link
-  const pub = h("div", {});
-  const pubSection = section("Short link you can update", pub);
-  let busy = false;
-  const renderPub = () => {
-    const id = store.doc.shareId;
-    const run = async (label: string, job: () => Promise<void>) => {
-      if (busy) return;
-      busy = true; renderPub();
-      try { await job(); } catch (e) { toast(e instanceof Error ? e.message : `Could not ${label}.`, "error"); }
-      busy = false; renderPub(); void renderList();
-    };
-    if (!id) {
-      pub.replaceChildren(
-        h("p", { class: "muted" }, "Publish the board to get a short link such as …/v/ab12cd34ef56. The link stays the same when you publish changes, so an embed never needs editing. Anyone with the link can view it, nobody can edit it."),
-        button("share", busy ? "Publishing…" : "Publish", () => run("publish", async () => {
-          const newId = await publish(page, store.doc);
-          store.setShareId(newId);
-          toast("Published. Copy the link below.");
-        }), " primary"));
-      (pub.querySelector("button") as HTMLButtonElement).disabled = busy;
-      return;
-    }
-    const link = shortLink(page, id, viewOpts());
-    const box = h("input", { type: "text", readonly: true, class: "share-link", value: link, "aria-label": "Short link" });
-    const row = h("div", {},
-      button("copy", "Copy link", () => copy(link, "Link")),
-      button("copy", "Copy embed code", () => copy(embedCode(link, store.doc.title, opts.height), "Embed code")),
-      button("share", "Open", () => window.open(link, "_blank", "noopener")),
-      button("sparkle", busy ? "Working…" : "Update this link", () => run("update", async () => { await updatePublished(page, id, store.doc); toast("The link now shows this version (it can take half a minute to appear everywhere)."); }), " primary"),
-      button("trash", "Unpublish", () => run("unpublish", async () => {
-        if (!confirm("Unpublish this board? The link and any embed of it stop working.")) return;
-        await unpublish(page, id);
-        store.setShareId(undefined);
-        toast("Unpublished.");
-      }), " danger"));
-    for (const b of row.querySelectorAll("button")) (b as HTMLButtonElement).disabled = busy;
-    pub.replaceChildren(
-      box, row,
-      h("p", { class: "muted" }, "This board was published. Editing it here does not change the link until you press Update. "),
-      button("share", "Publish as a new link instead", () => run("publish", async () => { store.setShareId(await publish(page, store.doc)); toast("Published as a new link."); })));
-  };
-
-  // ------------------------------------------------------- everything published
-  const list = h("div", { class: "pub-list" }, h("p", { class: "muted" }, "Loading."));
-  const listSection = section("Published boards", list);
-  const renderList = async () => {
-    let items: Published[];
-    try { items = await listPublished(page); }
-    catch (e) { list.replaceChildren(h("p", { class: "muted" }, e instanceof Error ? e.message : "Could not load the list.")); return; }
-    if (!items.length) { list.replaceChildren(h("p", { class: "muted" }, "Nothing is published yet.")); return; }
-    list.replaceChildren(...items.map((it) => h("div", { class: "pub-row" },
-      h("div", { class: "pub-title" }, h("strong", {}, it.title || "Untitled"), h("span", { class: "muted" }, it.updated ? new Date(it.updated).toLocaleString() : "")),
-      h("div", { class: "pub-actions" },
-        button("open" as keyof typeof UI_ICONS, "Edit", async () => {
-          if (store.itemCount > 0 && !confirm(`Replace the board with "${it.title}"? Undo brings the current one back.`)) return;
-          try { const doc = parseDoc(await fetchPublishedText(page, it.id)); doc.shareId = it.id; ctx.openDoc(doc); dlg.close(); }
-          catch (e) { toast(e instanceof Error ? e.message : "Could not open it.", "error"); }
-        }),
-        button("copy", "Copy link", () => copy(shortLink(page, it.id, viewOpts()), "Link")),
-        button("trash", "Delete", async () => {
-          if (!confirm(`Delete "${it.title}"? Its link and any embed of it stop working.`)) return;
-          try { await unpublish(page, it.id); if (store.doc.shareId === it.id) store.setShareId(undefined); toast("Deleted."); renderPub(); void renderList(); }
-          catch (e) { toast(e instanceof Error ? e.message : "Could not delete it.", "error"); }
-        }, " danger")))));
-  };
-
   // -------------------------------------------------------------------- wire
-  const changed = () => { void refreshLink(); renderPub(); };
+  const changed = () => { void refreshLink(); renderAction(); };
   modeSel.addEventListener("change", () => { opts.mode = modeSel.value === "2d" ? "2d" : "3d"; changed(); });
   themeSel.addEventListener("change", () => { opts.theme = themeSel.value as ViewTheme; changed(); });
   playChk.addEventListener("change", () => { opts.play = playChk.checked; changed(); });
   heightIn.addEventListener("change", () => { opts.height = Math.min(1600, Math.max(200, Number(heightIn.value) || 520)); heightIn.value = String(opts.height); changed(); });
 
-  const body = h("div", { class: "share" },
-    h("p", { class: "muted" }, "Anyone with a link can look at the diagram in 3D or 2D, turn it and pan around. They cannot change it. Links work inside other pages as an embed."),
-    options, quick, pubSection, listSection);
-  const dlg = openDialog("Share this board", body);
+  openDialog("Share this board", h("div", { class: "share" }, section("Share", action), options, quick));
   void refreshLink();
-  renderPub();
-  void renderList();
+  void load();
 }

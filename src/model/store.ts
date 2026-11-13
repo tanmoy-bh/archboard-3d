@@ -217,9 +217,9 @@ export class Store {
     return id;
   }
 
-  /** Remember (or forget) the published link of this board. Not an undo step: it is bookkeeping, not an edit. */
-  setShareId(id: string | undefined): void {
-    if (id) this.doc.shareId = id; else delete this.doc.shareId;
+  /** Remember (or forget) which saved board this is. Not an undo step: it is bookkeeping, not an edit. */
+  setBoardId(id: string | undefined): void {
+    if (id) this.doc.boardId = id; else delete this.doc.boardId;
     this.emit("doc");
   }
 
@@ -245,7 +245,8 @@ export class Store {
       d.texts = next.texts;
       d.zones = next.zones ?? [];
       d.steps = next.steps;
-      if (next.shareId) d.shareId = next.shareId; else delete d.shareId; // a different board does not inherit the old link
+      if (next.boardId) d.boardId = next.boardId; else delete d.boardId; // a different board does not inherit the old one
+      delete (d as { shareId?: string }).shareId;
     });
     this.selection.clear();
     this.emit("selection");

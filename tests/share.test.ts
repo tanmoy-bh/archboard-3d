@@ -16,8 +16,8 @@ describe("packed links", () => {
   });
 
   it("leaves the editor's bookkeeping id out of the link", async () => {
-    const doc = { ...exampleDoc(), shareId: "abcdefghijkl" };
-    expect((await unpackDoc(await packDoc(doc))).shareId).toBeUndefined();
+    const doc = { ...exampleDoc(), boardId: "abcdefghijkl" };
+    expect((await unpackDoc(await packDoc(doc))).boardId).toBeUndefined();
   });
 
   it("explains damaged links instead of crashing", async () => {

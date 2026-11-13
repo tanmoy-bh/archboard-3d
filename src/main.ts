@@ -13,7 +13,10 @@ import { Inspector } from "./ui/inspector";
 import { Legend } from "./ui/legend";
 import { openExamples } from "./ui/examples";
 import { Palette } from "./ui/palette";
+import { openSaved } from "./ui/saved";
 import { openShare } from "./ui/share";
+import { ApiError } from "./share/api";
+import { saveCurrent } from "./share/library";
 import { collapsible, panelHead, restorePanels } from "./ui/panels";
 import { StepsPanel } from "./ui/steps";
 import { Toolbar } from "./ui/toolbar";
@@ -99,13 +102,26 @@ function boot(): void {
       });
     },
     share() {
-      openShare({ store, toast, openDoc: (doc) => { store.replace(doc); view.fit(); } });
+      openShare({ store, toast });
     },
-    saveBoard() {
+    /** Save to the saved list on the server. Where there is none (running locally), download a file instead. */
+    async saveBoard() {
+      try {
+        const { created } = await saveCurrent(location.href, store);
+        toast(created ? "Saved. It is private until you share it. Find it under Saved." : "Saved over the earlier version.");
+      } catch (e) {
+        if (e instanceof ApiError && e.unavailable) { files.downloadBoard(); return; }
+        toast(e instanceof Error ? e.message : "Could not save the board.", "error");
+      }
+    },
+    downloadBoard() {
       const url = URL.createObjectURL(new Blob([stringifyDoc(store.doc)], { type: "application/json" }));
       download(`${slug(store.doc.title)}.archboard.json`, url);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast("Board saved as JSON.");
+      toast("Board downloaded as a JSON file.");
+    },
+    openSaved() {
+      openSaved({ store, toast, openDoc: (doc) => { store.replace(doc); view.fit(); }, downloadFile: () => files.downloadBoard() });
     },
     openBoard() {
       const input = h("input", { type: "file", accept: ".json,application/json" });

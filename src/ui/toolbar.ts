@@ -9,6 +9,7 @@ export interface FileActions {
   openBoard(): void;
   importDrawio(): void;
   saveBoard(): void;
+  openSaved(): void;
   exportPng(): void;
   exportGif(): void;
   share(): void;
@@ -79,14 +80,15 @@ export class Toolbar {
       modeToggle,
       h("span", { class: "grow" }),
       btn("sparkle", "Start from an example board", files.loadExample, "Example"),
+      btn("library", "Your saved boards: open one, or see which are shared", files.openSaved, "Saved"),
       btn("trash", "Remove everything from the board. Undo brings it back.", files.clearAll, "Clear"),
       btn("file", "New empty board", files.newBoard, "New"),
       btn("open", "Open a board from a JSON file", files.openBoard, "Open"),
       btn("importFile", "Import a draw.io (.drawio) diagram and turn it into a board", files.importDrawio, "draw.io"),
-      btn("save", "Save the board as a JSON file", files.saveBoard, "Save"),
+      btn("save", "Save this board to your saved boards (private until you share it)", files.saveBoard, "Save"),
       btn("image", "Export a PNG image", files.exportPng, "PNG"),
       btn("film", "Export an animated GIF. Turns the board once if Auto is on, otherwise the view stays still", files.exportGif, "GIF"),
-      btn("share", "Share this board: a link, embed code for another website, or a short link you can update", files.share, "Share"),
+      btn("share", "Share this board: get a link or embed code anyone can view", files.share, "Share"),
       sep(),
       this.themeBtn,
       // The deployed site is gated on the server; this signs you out of it. There is no gate in local dev.

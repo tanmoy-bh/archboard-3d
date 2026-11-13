@@ -33,6 +33,8 @@ export const UI_ICONS = {
   close: wrap('<path d="M6 6l12 12M18 6L6 18"/>'),
   expand: wrap('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path d="M4 4l5 5M20 4l-5 5M4 20l5-5M20 20l-5-5"/>'),
   shrink: wrap('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'),
+  library: wrap('<path d="M5 4h14v17l-7-4-7 4z"/>'),
+  globeOn: wrap('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'),
   trash: wrap('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
   swap: wrap('<path d="M7 4L3 8l4 4"/><path d="M3 8h13"/><path d="M17 20l4-4-4-4"/><path d="M21 16H8"/>'),
 };

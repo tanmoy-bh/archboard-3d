@@ -32,9 +32,10 @@ async function run(bytes: Uint8Array, stream: CompressionStream | DecompressionS
   return out;
 }
 
-/** The text of a board as it goes into a link. `shareId` belongs to the editor's bookkeeping, not to the picture. */
+/** The text of a board as it goes into a link. `boardId` belongs to the editor's bookkeeping, not to the picture. */
 export function boardText(doc: DocData): string {
-  const { shareId: _ignored, ...rest } = doc;
+  const { boardId: _ignored, ...rest } = doc as DocData & { shareId?: string };
+  delete rest.shareId;
   return JSON.stringify(rest);
 }
 

@@ -71,19 +71,20 @@ Needs a browser with WebGL.
 | Undo | Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z to redo. One drag or one burst of typing is one step. |
 | Duplicate / delete | Cmd/Ctrl+D, Delete. Deleting a tile removes its arrows. |
 | Examples | The **Example** button opens a menu of finished boards that ship with the app (`public/diagrams/`): ticketing, layers imported from draw.io, a serverless order pipeline and a RAG assistant. Picking one replaces the board, and Undo brings yours back. |
-| Share and embed | The **Share** button makes a link, embed code and a short link you can update. See below. |
-| Save and share | Save writes a `.archboard.json` file, Open reads one, PNG exports a tightly cropped image of the whole board from the current angle. The board also autosaves in the browser. |
+| Save and Saved | **Save** keeps this board in your saved list on the server (private to you, behind the passphrase), over the same entry if it was saved before. **Saved** lists every saved board, shared or not, newest first. A board that has a public link carries a **Shared** pill. From the list you can open a board, copy the link of a shared one, delete one, save the current board, or download it as a file. Running locally, where there is no server, Save downloads a `.archboard.json` file instead. |
+| Share | **Share** is just the action: one button turns sharing on for this board (saving it first), then shows the link and embed code, with Update and Stop sharing. A stopped board stays saved. See below. |
+| Files and images | **Open** reads a `.archboard.json` file, **PNG** exports a tightly cropped image of the whole board from the current angle. The board also autosaves in this browser. |
 
 ## Share and embed
 
-The **Share** button opens a window with three ways to give someone a view-only copy. Each opens the same
+The **Share** button gives someone a view-only copy in one of three ways. Each opens the same
 read-only viewer: the real 3D models, a 3D and 2D switch, play and pause for the slow turn, rotate left and
 right, zoom in and out, fit, a light or dark switch, and full screen (also the `Shift+F` key). Full screen inside another page needs the embedding `<iframe>` to allow it, which the embed code from Share does with `allowfullscreen`. Where the browser has no full screen for pages (an iPhone), the button opens the board in its own tab. Visitors can drag to pan and zoom with Ctrl or Cmd and the wheel. They cannot edit.
 
 | Way | Link looks like | Where the diagram lives | Good for |
 |---|---|---|---|
 | Link that holds the diagram | `…/view/#d=<packed>` | inside the link; the part after `#` is never sent to a server | a quick share; nothing is stored |
-| Short link you can update | `…/v/ab12cd34ef56` | Cloudflare KV, published from the Share window | an embed that must keep working while you improve the diagram |
+| Short link you can update | `…/v/ab12cd34ef56` | Cloudflare KV, with your saved boards; shared from the Share window | an embed that must keep working while you improve the diagram |
 | Named file | `…/view/?d=ticketing` | `public/diagrams/<name>.json` in this repo | examples that ship with the app |
 
 Options on any link: `mode=2d`, `play=0` (do not start turning), `theme=light` or `theme=dark`, `controls=0`
@@ -94,9 +95,11 @@ Options on any link: `mode=2d`, `play=0` (do not start turning), `theme=light` o
   width="100%" height="520" style="border:0;border-radius:12px" loading="lazy" allowfullscreen></iframe>
 ```
 
-Anyone with a link can open it. A published link's id is 12 random characters, so it works as a key, but it is
-not a password: do not publish anything you would not want someone with the link to see. **Unpublish** (or
-delete in the "Published boards" list) stops it. Publishing, updating and deleting need the passphrase.
+Anyone with a link can open it. A board's id is 12 random characters, so the link works as a key, but it is not a
+password: do not share anything you would not want someone with the link to see. A board is private until you press
+Share. **Stop sharing** (or deleting it from Saved) makes its link stop working. Saving, sharing, updating and
+deleting need the passphrase; reading a shared board does not, and reading a board that is only saved is refused
+exactly as if it did not exist.
 
 **Light and dark.** The viewer follows the visitor's browser setting unless the link says `theme=light` or
 `theme=dark`, and its sun or moon button flips it. A page that embeds it can keep it in step with its own theme:
@@ -120,11 +123,11 @@ Plain JSON, version 1:
   "texts": [{ "id": "t1", "gx": 2, "gy": 5, "text": "Backend services", "size": "m", "boxed": true }],
   "zones": [{ "id": "z1", "gx": 1.5, "gy": -0.5, "w": 5.5, "h": 2.5, "label": "Browse and waiting room", "color": "#4f8cff" }],
   "steps": ["The waiting room admits users in batches."],
-  "shareId": "ab12cd34ef56"
+  "boardId": "ab12cd34ef56"
 }
 ```
 
-`gx` and `gy` are grid cells (half cells allowed). `size` is `"s"`, `"m"` or `"l"`, and `texts` and `zones` are optional in older files. A zone's `gx`, `gy` is its top left corner and `w`, `h` its size in cells. `shareId` is set by Publish so a later Publish can update the same link. Icons are the glyph keys listed in
+`gx` and `gy` are grid cells (half cells allowed). `size` is `"s"`, `"m"` or `"l"`, and `texts` and `zones` are optional in older files. A zone's `gx`, `gy` is its top left corner and `w`, `h` its size in cells. `boardId` is set by Save so a later Save updates the same saved board (older files called it `shareId`). Icons are the glyph keys listed in
 `src/model/types.ts`. Unknown icons fall back to a service glyph, and arrows that point at missing
 tiles are dropped on load.
 
@@ -136,8 +139,8 @@ TypeScript, Vite and Three.js. No UI framework. Three layers, each usable withou
 - `src/import/` reads draw.io files: `xml.ts` is a small XML reader, `drawio.ts` turns pages into boards, `iconMap.ts` is the table that maps cloud services and labels to components.
 - `src/glyphs/` has the components: `models.ts` builds the 63 3D models from primitives, `flatIcons.ts` holds the original 2D drawings,
   and `thumbs.ts` renders the palette and legend pictures.
-- `functions/_middleware.js` is the server-side passphrase gate. `functions/api/` and `functions/v/` are the publish routes, which share `server/diagrams.js`. `gate-tests/` tests all of it.
-- `view/index.html` and `src/view/` are the read-only viewer, a second page of the same build. `src/share/` has the link format and the publish client.
+- `functions/_middleware.js` is the server-side passphrase gate. `functions/api/` and `functions/v/` are the saved board routes, which share `server/diagrams.js`. `gate-tests/` tests all of it.
+- `view/index.html` and `src/view/` are the read-only viewer, a second page of the same build. `src/share/` has the link format and the saved board client.
 - `src/scene/` has the 3D view. `routing.ts` and `labels.ts` are pure and unit tested: they route arrows
   around tiles in lanes, and place label pills in screen space so they avoid tile names and each other.
   `sceneView.ts` owns the renderer, the isometric orthographic camera and picking.
@@ -161,10 +164,10 @@ Pushing to `main` runs `.github/workflows/deploy-cloudflare.yml`, which tests, b
 - `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the `tanmoy-bh` organization secrets
 - `ARCHBOARD_PASSPHRASE`, a repository secret you add once
 
-**One-time setup for publishing.** The publish routes store boards in a Cloudflare KV namespace. Create a namespace
+**One-time setup for saved boards.** The routes store boards in a Cloudflare KV namespace. Create a namespace
 (for example `archboard-diagrams`) and bind it to the Pages project `tanmoybh-archboard-3d` as `DIAGRAMS`, in the
 dashboard under Workers & Pages, the project, Settings, Bindings (Production and Preview). Until it is bound the
-routes answer "Publishing is not set up yet" and everything else works. To try it locally:
+routes answer "Publishing is not set up yet" (Save then downloads a file) and everything else works. To try it locally:
 `npm run build`, put `ACCESS_PASSPHRASE=anything` in `.dev.vars`, then `npx wrangler@4.40.0 pages dev dist --kv=DIAGRAMS`.
 
 The [projects hub](https://github.com/tanmoy-bh/projects) serves it at `/archboard-3d/` by proxying to

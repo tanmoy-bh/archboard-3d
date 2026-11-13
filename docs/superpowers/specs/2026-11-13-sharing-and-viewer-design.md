@@ -122,3 +122,19 @@ Chosen: all three, since they share one viewer and each covers a case the others
 | Local testing of the API | `wrangler pages dev dist --kv=DIAGRAMS` and unit tests with a fake KV |
 | Examples drifting from the code | Test parses every example with `parseDoc` |
 | Theme in the embed | `theme` query option, default follows the host browser |
+
+## Update: saved boards and a simpler Share
+
+Share had grown into a list. It is now only an action, and every board has a home in a **Saved** list.
+
+- **Saved** (toolbar button, like Example) lists every saved board, newest first. A board with a public link carries a
+  **Shared** pill. Rows: Open, Copy link (shared only), Delete. Top: Save this board, Download as a file.
+- **Save** keeps the board in the list (private) over the same entry if it has been saved before. The entry's id is
+  remembered in the board file as `boardId` (older files called it `shareId`). With no server (local development), Save
+  downloads a file as before.
+- **Share** is one button: it saves the board and marks it shared, then shows the link and embed code, with Update the
+  shared version and Stop sharing. Stopping keeps the board saved.
+- Server: KV metadata holds `{ title, updated, shared }`. The public read `/api/d/<id>` answers only for a shared board and
+  gives 404 for a saved one, the same as for a missing one. Boards from before the flag existed have no `shared` in their
+  metadata and count as shared, so existing embeds keep working. New routes behind the gate: `GET /api/diagrams/<id>`
+  (owner read), `POST /api/diagrams/<id>/shared` (`{ "shared": true|false }`), `?shared=1|0` on save.
