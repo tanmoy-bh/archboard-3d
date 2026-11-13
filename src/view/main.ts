@@ -105,6 +105,8 @@ function boot(): void {
         btn("rotateL", "Rotate left", () => view.rotateView(-1)),
         playBtn,
         btn("rotateR", "Rotate right", () => view.rotateView(1)),
+        btn("minus", "Zoom out", () => view.zoomCentered(1 / 1.25)),
+        btn("plus", "Zoom in", () => view.zoomCentered(1.25)),
         btn("fit", "Fit the diagram to the window", () => view.fit()),
         h("span", { class: "sep", role: "separator" }),
         themeBtn,
