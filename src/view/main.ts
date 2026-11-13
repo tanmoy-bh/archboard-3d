@@ -98,6 +98,29 @@ function boot(): void {
       if (d && d.type === "archboard:theme" && (d.theme === "light" || d.theme === "dark" || d.theme === "auto")) setTheme(d.theme);
     });
 
+    // Full screen: expands the diagram to the whole screen so it can be read in detail. Inside a page this needs the
+    // embedding iframe to allow it (the embed code from Share does). Where the browser has no full screen for pages
+    // (iPhone), an embedded board opens in its own tab instead.
+    const embedded = window.self !== window.top;
+    const canFullscreen = !!document.fullscreenEnabled;
+    const fsBtn = h("button", { class: "tb", type: "button", onclick: () => toggleFullscreen() });
+    const isFull = () => !!document.fullscreenElement;
+    const refreshFs = () => {
+      const label = !canFullscreen ? "Open the diagram in its own tab" : isFull() ? "Leave full screen" : "Full screen";
+      fsBtn.replaceChildren(svg(UI_ICONS[isFull() ? "shrink" : "expand"]));
+      fsBtn.title = label;
+      fsBtn.setAttribute("aria-label", label);
+    };
+    const toggleFullscreen = () => {
+      if (!canFullscreen) { window.open(location.href, "_blank", "noopener"); return; }
+      if (isFull()) void document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(() => { window.open(location.href, "_blank", "noopener"); });
+    };
+    document.addEventListener("fullscreenchange", () => {
+      refreshFs();
+      setTimeout(() => { view.resizeNow(); view.fit(); }, 150); // fill the new size
+    });
+
     if (opts.controls) {
       const bar = h("div", { class: "vbar", role: "toolbar", "aria-label": "View controls" },
         h("div", { class: "seg", role: "group", "aria-label": "View mode" }, b3, b2),
@@ -110,11 +133,13 @@ function boot(): void {
         btn("fit", "Fit the diagram to the window", () => view.fit()),
         h("span", { class: "sep", role: "separator" }),
         themeBtn,
+        canFullscreen || embedded ? fsBtn : null,
       );
       wrap.append(h("div", { class: "vtitle" }, doc.title), bar);
     }
     refresh();
     refreshTheme();
+    refreshFs();
 
     // Look around: drag to pan. Zoom with Ctrl or Cmd and the wheel; a plain wheel zooms only when this page is
     // not inside another page, so it never steals the scroll of the page that embeds it.
@@ -153,6 +178,7 @@ function boot(): void {
       else if (e.key === " " && mode === "3d") { e.preventDefault(); playing = !playing; view.setAutoRotate(playing); refresh(); }
       else if (e.key === "f") view.fit();
       else if (e.key === "t") setMode(mode === "3d" ? "2d" : "3d");
+      else if (e.key === "F") toggleFullscreen();
     });
     if (opts.theme === "auto") window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { view.setTheme(readTheme()); refreshTheme(); });
   }).catch((e) => fail("This diagram could not be opened", e instanceof Error ? e.message : "Something went wrong."));

@@ -78,7 +78,7 @@ Needs a browser with WebGL.
 
 The **Share** button opens a window with three ways to give someone a view-only copy. Each opens the same
 read-only viewer: the real 3D models, a 3D and 2D switch, play and pause for the slow turn, rotate left and
-right, zoom in and out, fit, and a light or dark switch. Visitors can drag to pan and zoom with Ctrl or Cmd and the wheel. They cannot edit.
+right, zoom in and out, fit, a light or dark switch, and full screen (also the `Shift+F` key). Full screen inside another page needs the embedding `<iframe>` to allow it, which the embed code from Share does with `allowfullscreen`. Where the browser has no full screen for pages (an iPhone), the button opens the board in its own tab. Visitors can drag to pan and zoom with Ctrl or Cmd and the wheel. They cannot edit.
 
 | Way | Link looks like | Where the diagram lives | Good for |
 |---|---|---|---|
