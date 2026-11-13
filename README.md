@@ -78,7 +78,7 @@ Needs a browser with WebGL.
 
 The **Share** button opens a window with three ways to give someone a view-only copy. Each opens the same
 read-only viewer: the real 3D models, a 3D and 2D switch, play and pause for the slow turn, rotate left and
-right, and fit. Visitors can drag to pan and zoom with Ctrl or Cmd and the wheel. They cannot edit.
+right, fit, and a light or dark switch. Visitors can drag to pan and zoom with Ctrl or Cmd and the wheel. They cannot edit.
 
 | Way | Link looks like | Where the diagram lives | Good for |
 |---|---|---|---|
@@ -97,6 +97,13 @@ Options on any link: `mode=2d`, `play=0` (do not start turning), `theme=light` o
 Anyone with a link can open it. A published link's id is 12 random characters, so it works as a key, but it is
 not a password: do not publish anything you would not want someone with the link to see. **Unpublish** (or
 delete in the "Published boards" list) stops it. Publishing, updating and deleting need the passphrase.
+
+**Light and dark.** The viewer follows the visitor's browser setting unless the link says `theme=light` or
+`theme=dark`, and its sun or moon button flips it. A page that embeds it can keep it in step with its own theme:
+
+```js
+frame.contentWindow.postMessage({ type: "archboard:theme", theme: "dark" }, "*"); // "light", "dark" or "auto"
+```
 
 To add a shipped example, edit `scripts/build-examples.ts` and run `npx vite-node scripts/build-examples.ts`.
 

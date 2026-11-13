@@ -40,7 +40,9 @@ Packed format: compact JSON, raw deflate (`CompressionStream`), base64url. Infla
 - Same scene code and 3D models as the editor, built from the same `SceneView`, with a read-only store. No
   controller, palette, inspector or editing code is loaded by it.
 - Controls (one bar, top right): **3D / 2D**, **rotate left**, **rotate right**, **play / pause** (the auto
-  turn), **fit**. The diagram title shows at top left. That is all.
+  turn), **fit**, and a **light / dark** switch. The diagram title shows at top left. That is all.
+- Theme: follows the browser unless `theme=` is given; the switch flips it; a host page can send
+  `postMessage({ type: "archboard:theme", theme })` with `light`, `dark` or `auto`. Anything else is ignored.
 - Direct manipulation: drag pans, `Ctrl`/`Cmd` + wheel zooms, plain wheel zooms only when the page is not in
   an iframe (so it never traps scrolling on the host page).
 - Query options, all optional: `mode=3d|2d`, `play=1|0` (default 1), `theme=light|dark` (default follows the

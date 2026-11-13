@@ -78,6 +78,26 @@ function boot(): void {
     };
     const setMode = (m: ViewMode) => { if (m === mode) return; mode = m; view.setMode(mode); refresh(); };
 
+    // Light and dark. The button flips it; a host page can also set it with
+    //   iframe.contentWindow.postMessage({ type: "archboard:theme", theme: "dark" }, "*")   ("light", "dark" or "auto")
+    const themeBtn = h("button", { class: "tb", type: "button", onclick: () => setTheme(readTheme().dark ? "light" : "dark") });
+    const refreshTheme = () => {
+      const dark = readTheme().dark;
+      themeBtn.replaceChildren(svg(UI_ICONS[dark ? "sun" : "moon"]));
+      const label = dark ? "Switch to the light theme" : "Switch to the dark theme";
+      themeBtn.title = label;
+      themeBtn.setAttribute("aria-label", label);
+    };
+    const setTheme = (t: "light" | "dark" | "auto") => {
+      if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+      view.setTheme(readTheme());
+      refreshTheme();
+    };
+    window.addEventListener("message", (e) => {
+      const d = e.data as { type?: unknown; theme?: unknown } | null;
+      if (d && d.type === "archboard:theme" && (d.theme === "light" || d.theme === "dark" || d.theme === "auto")) setTheme(d.theme);
+    });
+
     if (opts.controls) {
       const bar = h("div", { class: "vbar", role: "toolbar", "aria-label": "View controls" },
         h("div", { class: "seg", role: "group", "aria-label": "View mode" }, b3, b2),
@@ -86,10 +106,13 @@ function boot(): void {
         playBtn,
         btn("rotateR", "Rotate right", () => view.rotateView(1)),
         btn("fit", "Fit the diagram to the window", () => view.fit()),
+        h("span", { class: "sep", role: "separator" }),
+        themeBtn,
       );
       wrap.append(h("div", { class: "vtitle" }, doc.title), bar);
     }
     refresh();
+    refreshTheme();
 
     // Look around: drag to pan. Zoom with Ctrl or Cmd and the wheel; a plain wheel zooms only when this page is
     // not inside another page, so it never steals the scroll of the page that embeds it.
@@ -129,7 +152,7 @@ function boot(): void {
       else if (e.key === "f") view.fit();
       else if (e.key === "t") setMode(mode === "3d" ? "2d" : "3d");
     });
-    if (opts.theme === "auto") window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => view.setTheme(readTheme()));
+    if (opts.theme === "auto") window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { view.setTheme(readTheme()); refreshTheme(); });
   }).catch((e) => fail("This diagram could not be opened", e instanceof Error ? e.message : "Something went wrong."));
 }
 
