@@ -42,6 +42,8 @@ export class ZoneView {
   private line: Line2 | null = null;
   private label: THREE.Sprite | null = null;
   private labelSize = { w: 0, h: 0 };
+  /** Ground point the name is centred on, chosen by placeZoneLabels. Null until it has been placed. */
+  private labelAt: [number, number] | null = null;
   private handles: THREE.Mesh[] = [];
   private selected = false;
   private hover = false;
@@ -74,6 +76,19 @@ export class ZoneView {
     this.order = 1 + n * 0.5;
     if (this.fill) this.fill.renderOrder = this.order;
     if (this.line) this.line.renderOrder = this.order + 0.25;
+  }
+
+  /** Put the name where placeZoneLabels found a free side. Falls back to the back corner until then. */
+  setLabelAt(at: [number, number] | null): void {
+    this.labelAt = at;
+    this.positionLabel();
+  }
+
+  private positionLabel(): void {
+    if (!this.label) return;
+    const d = this.data;
+    const [x, z] = this.labelAt ?? [d.gx * SP + 0.35 + (this.labelSize.w * PXW) / 2, d.gy * SP + 0.35 + (this.labelSize.h * PXW) / 2];
+    this.label.position.set(x, 0.02, z);
   }
 
   private clear(): void {
@@ -112,8 +127,8 @@ export class ZoneView {
       this.labelSize = { w: info.w, h: info.h };
       this.label = new THREE.Sprite(new THREE.SpriteMaterial({ map: info.tex, transparent: true, depthTest: false, depthWrite: false }));
       this.label.scale.set(info.w * PXW, info.h * PXW, 1);
-      this.label.center.set(0, 1); // the top left of the name sits at the anchor
-      this.label.position.set(x0 + 0.35, 0.02, z0 + 0.35);
+      this.label.center.set(0.5, 0.5);
+      this.positionLabel();
       this.label.renderOrder = 6;
       this.group.add(this.label);
     } else this.labelSize = { w: 0, h: 0 };
@@ -174,8 +189,8 @@ export class ZoneView {
     if (!this.label || !this.labelSize.w) return false;
     const c = this.label.position.clone().project(camera);
     const fw = (camera.right - camera.left) / camera.zoom, fh = (camera.top - camera.bottom) / camera.zoom;
-    const w = (2 * this.labelSize.w * PXW) / fw, h = (2 * this.labelSize.h * PXW) / fh;
-    return ndcX >= c.x && ndcX <= c.x + w && ndcY <= c.y && ndcY >= c.y - h;
+    const hw = (this.labelSize.w * PXW) / fw, hh = (this.labelSize.h * PXW) / fh; // half sizes in NDC
+    return Math.abs(ndcX - c.x) <= hw && Math.abs(ndcY - c.y) <= hh;
   }
 
   /** Which corner handle is under a ground point, if any. Only meaningful for a selected zone. */

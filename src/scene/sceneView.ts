@@ -15,6 +15,7 @@ import { Ctx, TextureFactory } from "./textures";
 import { TextView } from "./textView";
 import { Corner, ZoneView } from "./zoneView";
 import { zonesBigFirst } from "../model/zones";
+import { ZoneLabelSpec, placeZoneLabels } from "./zoneLabels";
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 4;
@@ -534,6 +535,18 @@ export class SceneView {
     }
     for (const [id, v] of this.zones) if (!liveZones.has(id)) { v.dispose(); this.zones.delete(id); }
     zonesBigFirst(doc.zones).forEach((z, i) => this.zones.get(z.id)?.setOrder(i));
+    // Each zone's name goes on a free side of its zone for the current view angle.
+    const zoneSpecs: ZoneLabelSpec[] = doc.zones.map((z) => {
+      const info = z.label.trim() ? tex.zoneLabel(z.label, z.color) : null;
+      return { id: z.id, x0: z.gx * SP, z0: z.gy * SP, x1: (z.gx + z.w) * SP, z1: (z.gy + z.h) * SP, w: info ? info.w * PXW : 0, h: info ? info.h * PXW : 0 };
+    });
+    const zonePlaces = placeZoneLabels(labelAz, this.elevTarget, zoneSpecs, {
+      tiles,
+      pills: specs.flatMap((e) => { const a = anchors.get(e.id); return a && e.pillW > 0 ? [{ at: a.at, w: e.pillW, h: e.pillH }] : []; }),
+      routes: specs.map((e) => e.pts),
+      texts: doc.texts.map((t) => { const i = tex.textBox(t.text, t.size, !!t.boxed); return { at: [t.gx * SP, t.gy * SP] as [number, number], w: i.w * PXW, h: i.h * PXW }; }),
+    }, METRICS[this.mode]);
+    for (const z of doc.zones) this.zones.get(z.id)?.setLabelAt(zonePlaces.get(z.id)?.at ?? null);
     this.syncSelection();
   }
 
