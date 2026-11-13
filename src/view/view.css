@@ -16,3 +16,14 @@
   .vtitle { right: 16px; top: 62px; }
   .vbar { left: 10px; right: 10px; justify-content: space-between; }
 }
+
+/* the written steps, beside the diagram */
+.vsteps { position: absolute; top: 62px; right: 10px; width: min(340px, calc(100% - 20px)); max-height: calc(100% - 74px); overflow: auto;
+  padding: 10px 12px 12px; background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--border); border-radius: 12px; backdrop-filter: blur(6px); font-size: 13px; }
+.vsteps[hidden] { display: none; }
+.vsteps-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.vsteps ol { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 8px; }
+.vsteps li { counter-increment: s; position: relative; padding-left: 30px; line-height: 1.4; }
+.vsteps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; color: var(--step); border: 1.5px solid var(--step); }
+@media (max-width: 520px) { .vsteps { top: 108px; } }

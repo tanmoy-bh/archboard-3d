@@ -138,3 +138,10 @@ Share had grown into a list. It is now only an action, and every board has a hom
   gives 404 for a saved one, the same as for a missing one. Boards from before the flag existed have no `shared` in their
   metadata and count as shared, so existing embeds keep working. New routes behind the gate: `GET /api/diagrams/<id>`
   (owner read), `POST /api/diagrams/<id>/shared` (`{ "shared": true|false }`), `?shared=1|0` on save.
+
+## Update: bigger view
+
+Browser full screen is unreliable inside an iframe and was easy to mistake for Fit. Inside another page the button is now
+**Open in a full page**: it opens the same board in a new tab with the current mode and theme (paused), like the draw.io
+viewer in Confluence. On a page of its own it toggles browser full screen. A **Steps** panel lists the written steps
+behind the numbered arrows; it opens by default on a page of its own (width at least 900) and stays closed in an embed.

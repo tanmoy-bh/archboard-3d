@@ -98,28 +98,54 @@ function boot(): void {
       if (d && d.type === "archboard:theme" && (d.theme === "light" || d.theme === "dark" || d.theme === "auto")) setTheme(d.theme);
     });
 
-    // Full screen: expands the diagram to the whole screen so it can be read in detail. Inside a page this needs the
-    // embedding iframe to allow it (the embed code from Share does). Where the browser has no full screen for pages
-    // (iPhone), an embedded board opens in its own tab instead.
+    // Bigger view. Inside another page the button opens the diagram in its own full page in a new tab, like the draw.io
+    // viewer in Confluence: reliable everywhere, with the same view you were looking at. On a page of its own the
+    // button uses the browser's full screen.
     const embedded = window.self !== window.top;
     const canFullscreen = !!document.fullscreenEnabled;
-    const fsBtn = h("button", { class: "tb", type: "button", onclick: () => toggleFullscreen() });
     const isFull = () => !!document.fullscreenElement;
-    const refreshFs = () => {
-      const label = !canFullscreen ? "Open the diagram in its own tab" : isFull() ? "Leave full screen" : "Full screen";
-      fsBtn.replaceChildren(svg(UI_ICONS[isFull() ? "shrink" : "expand"]));
-      fsBtn.title = label;
-      fsBtn.setAttribute("aria-label", label);
+    const fullPageUrl = (): string => {
+      const u = new URL(location.href);
+      u.searchParams.delete("controls");
+      u.searchParams.set("mode", mode);
+      u.searchParams.set("theme", readTheme().dark ? "dark" : "light");
+      if (playing) u.searchParams.delete("play"); else u.searchParams.set("play", "0");
+      return u.toString();
     };
-    const toggleFullscreen = () => {
-      if (!canFullscreen) { window.open(location.href, "_blank", "noopener"); return; }
+    const bigBtn = h("button", { class: "tb", type: "button", onclick: () => bigger() });
+    const refreshBig = () => {
+      const label = embedded ? "Open in a full page" : isFull() ? "Leave full screen" : "Full screen";
+      bigBtn.replaceChildren(svg(UI_ICONS[embedded ? "openOut" : isFull() ? "shrink" : "expand"]));
+      bigBtn.title = label;
+      bigBtn.setAttribute("aria-label", label);
+    };
+    const bigger = () => {
+      if (embedded) { window.open(fullPageUrl(), "_blank", "noopener"); return; }
       if (isFull()) void document.exitFullscreen();
-      else document.documentElement.requestFullscreen().catch(() => { window.open(location.href, "_blank", "noopener"); });
+      else if (canFullscreen) void document.documentElement.requestFullscreen().catch(() => { /* the browser said no: the page already fills the window */ });
     };
     document.addEventListener("fullscreenchange", () => {
-      refreshFs();
+      refreshBig();
       setTimeout(() => { view.resizeNow(); view.fit(); }, 150); // fill the new size
     });
+
+    // The written steps behind the numbered arrows, so the diagram can be read in full detail.
+    const stepsPanel = doc.steps.length
+      ? h("aside", { class: "vsteps", "aria-label": "How it works", hidden: true },
+          h("div", { class: "vsteps-head" }, h("strong", {}, "How it works"),
+            h("button", { class: "tb", type: "button", title: "Close", "aria-label": "Close the steps", onclick: () => showSteps(false) }, svg(UI_ICONS.close))),
+          h("ol", {}, ...doc.steps.map((t) => h("li", {}, t))))
+      : null;
+    const stepsBtn = h("button", { class: "tb", type: "button", title: "Show the steps", "aria-label": "Show the steps", onclick: () => showSteps(stepsPanel?.hidden ?? false) }, svg(UI_ICONS.list));
+    const showSteps = (on: boolean) => {
+      if (!stepsPanel) return;
+      stepsPanel.hidden = !on;
+      stepsBtn.classList.toggle("active", on);
+      stepsBtn.setAttribute("aria-pressed", String(on));
+      const label = on ? "Hide the steps" : "Show the steps";
+      stepsBtn.title = label;
+      stepsBtn.setAttribute("aria-label", label);
+    };
 
     if (opts.controls) {
       const bar = h("div", { class: "vbar", role: "toolbar", "aria-label": "View controls" },
@@ -133,13 +159,16 @@ function boot(): void {
         btn("fit", "Fit the diagram to the window", () => view.fit()),
         h("span", { class: "sep", role: "separator" }),
         themeBtn,
-        canFullscreen || embedded ? fsBtn : null,
+        stepsPanel ? stepsBtn : null,
+        canFullscreen || embedded ? bigBtn : null,
       );
       wrap.append(h("div", { class: "vtitle" }, doc.title), bar);
+      if (stepsPanel) wrap.append(stepsPanel);
     }
     refresh();
     refreshTheme();
-    refreshFs();
+    refreshBig();
+    if (!embedded && innerWidth >= 900) showSteps(true); // a page of its own has room to show the steps
 
     // Look around: drag to pan. Zoom with Ctrl or Cmd and the wheel; a plain wheel zooms only when this page is
     // not inside another page, so it never steals the scroll of the page that embeds it.
@@ -178,7 +207,7 @@ function boot(): void {
       else if (e.key === " " && mode === "3d") { e.preventDefault(); playing = !playing; view.setAutoRotate(playing); refresh(); }
       else if (e.key === "f") view.fit();
       else if (e.key === "t") setMode(mode === "3d" ? "2d" : "3d");
-      else if (e.key === "F") toggleFullscreen();
+      else if (e.key === "F") bigger();
     });
     if (opts.theme === "auto") window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { view.setTheme(readTheme()); refreshTheme(); });
   }).catch((e) => fail("This diagram could not be opened", e instanceof Error ? e.message : "Something went wrong."));
