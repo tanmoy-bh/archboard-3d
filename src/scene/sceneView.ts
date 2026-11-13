@@ -16,7 +16,7 @@ import { TextView } from "./textView";
 import { Corner, ZoneView } from "./zoneView";
 import { zonesBigFirst } from "../model/zones";
 
-const MIN_ZOOM = 0.25;
+const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 4;
 
 /** Owns the Three.js scene: camera, lights, floor, and one view object per node and edge. */
