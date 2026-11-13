@@ -13,11 +13,15 @@
 .vmsg.error strong { color: var(--danger); }
 .vnote { position: absolute; left: 14px; bottom: 10px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
 @media (max-width: 520px) {
-  .vtitle { right: 16px; top: 62px; }
-  .vbar { left: 10px; right: 10px; justify-content: space-between; }
+  /* a phone: one row of the essentials (the extras are hidden: pinch zooms, the theme follows the phone) */
+  .vbar { left: 8px; right: 8px; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 4px; }
+  .vbar .sep, .vbar .vx { display: none; }
+  .vbar .tb { height: 36px; min-width: 34px; padding: 0 6px; justify-content: center; }
+  .vbar .seg-btn { height: 34px; min-width: 40px; padding: 0 8px; }
+  .vtitle { right: 12px; top: 64px; }
 }
 
-/* the written steps, beside the diagram */
+/* the written steps, beside the diagram (a sheet at the bottom on a phone) */
 .vsteps { position: absolute; top: 62px; right: 10px; width: min(340px, calc(100% - 20px)); max-height: calc(100% - 74px); overflow: auto;
   padding: 10px 12px 12px; background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--border); border-radius: 12px; backdrop-filter: blur(6px); font-size: 13px; }
 .vsteps[hidden] { display: none; }
@@ -26,4 +30,4 @@
 .vsteps li { counter-increment: s; position: relative; padding-left: 30px; line-height: 1.4; }
 .vsteps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
   font-size: 12px; font-weight: 700; color: var(--step); border: 1.5px solid var(--step); }
-@media (max-width: 520px) { .vsteps { top: 108px; } }
+@media (max-width: 520px) { .vsteps { top: auto; bottom: 8px; right: 8px; left: 8px; width: auto; max-height: 48%; } }

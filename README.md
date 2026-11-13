@@ -79,7 +79,7 @@ Needs a browser with WebGL.
 
 The **Share** button gives someone a view-only copy in one of three ways. Each opens the same
 read-only viewer: the real 3D models, a 3D and 2D switch, play and pause for the slow turn, rotate left and
-right, zoom in and out, fit, a light or dark switch, a **Steps** panel (the written steps behind the numbered arrows), and a bigger view. Inside another page the last button, **Open in a full page**, opens the same board in a new tab, in the same mode and theme, with the steps shown beside it; this works in every browser and needs nothing from the embedding page. On a page of its own the same button uses the browser's full screen (also `Shift+F`). Visitors can drag to pan and zoom with Ctrl or Cmd and the wheel. They cannot edit.
+right, zoom in and out, fit, a light or dark switch, a **Steps** panel (the written steps behind the numbered arrows), and a bigger view. Inside another page the last button, **Open in a full page**, opens the same board in a new tab, in the same mode and theme, with the steps shown beside it; this works in every browser and needs nothing from the embedding page. On a page of its own the same button uses the browser's full screen (also `Shift+F`). On a phone the viewer keeps one row of the essentials (3D and 2D, rotate, play, fit, steps, open in a full page); two fingers pinch to zoom and one finger pans, and the steps open as a sheet at the bottom. The editor is a desktop tool. Visitors can drag to pan and zoom with Ctrl or Cmd and the wheel. They cannot edit.
 
 | Way | Link looks like | Where the diagram lives | Good for |
 |---|---|---|---|

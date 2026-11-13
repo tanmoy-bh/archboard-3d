@@ -147,6 +147,9 @@ function boot(): void {
       stepsBtn.setAttribute("aria-label", label);
     };
 
+    // On a narrow screen (a phone) the extras go: pinch zooms, and the theme follows the phone.
+    const extra = <T extends HTMLElement>(el: T): T => { el.classList.add("vx"); return el; };
+
     if (opts.controls) {
       const bar = h("div", { class: "vbar", role: "toolbar", "aria-label": "View controls" },
         h("div", { class: "seg", role: "group", "aria-label": "View mode" }, b3, b2),
@@ -154,11 +157,11 @@ function boot(): void {
         btn("rotateL", "Rotate left", () => view.rotateView(-1)),
         playBtn,
         btn("rotateR", "Rotate right", () => view.rotateView(1)),
-        btn("minus", "Zoom out", () => view.zoomCentered(1 / 1.25)),
-        btn("plus", "Zoom in", () => view.zoomCentered(1.25)),
+        extra(btn("minus", "Zoom out", () => view.zoomCentered(1 / 1.25))),
+        extra(btn("plus", "Zoom in", () => view.zoomCentered(1.25))),
         btn("fit", "Fit the diagram to the window", () => view.fit()),
         h("span", { class: "sep", role: "separator" }),
-        themeBtn,
+        extra(themeBtn),
         stepsPanel ? stepsBtn : null,
         canFullscreen || embedded ? bigBtn : null,
       );
@@ -174,20 +177,37 @@ function boot(): void {
     // not inside another page, so it never steals the scroll of the page that embeds it.
     const top = window.self === window.top;
     let last: { x: number; y: number } | null = null;
+    // Two fingers pinch to zoom (and the pair pans the board a little as it moves); one finger or the mouse pans.
+    const touches = new Map<number, { x: number; y: number }>();
+    const spread = () => { const [a, b] = [...touches.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    const middle = () => { const [a, b] = [...touches.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+    let pinch = 0;
     view.canvas.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 && e.button !== 1) return;
-      view.canvas.setPointerCapture(e.pointerId);
+      try { view.canvas.setPointerCapture(e.pointerId); } catch { /* the pointer is already gone */ }
       view.holdRotation(true); // the turn waits while you hold the board
-      last = { x: e.clientX, y: e.clientY };
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) { pinch = spread(); last = middle(); } else last = { x: e.clientX, y: e.clientY };
       stage.classList.add("dragging");
     });
     view.canvas.addEventListener("pointermove", (e) => {
       if (!last) return;
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size >= 2) {
+        const m = middle(), d = spread();
+        if (pinch > 0 && d > 0) view.zoomAt(m.x, m.y, d / pinch);
+        view.panScreen(last.x, last.y, m.x, m.y);
+        pinch = d; last = m;
+        return;
+      }
       view.panScreen(last.x, last.y, e.clientX, e.clientY);
       last = { x: e.clientX, y: e.clientY };
     });
     const release = (e: PointerEvent) => {
-      last = null;
+      touches.delete(e.pointerId);
+      if (touches.size === 1) { const [rest] = [...touches.values()]; last = { ...rest }; pinch = 0; return; } // one finger left: carry on panning
+      if (touches.size > 0) return;
+      last = null; pinch = 0;
       view.holdRotation(false);
       stage.classList.remove("dragging");
       if (view.canvas.hasPointerCapture(e.pointerId)) view.canvas.releasePointerCapture(e.pointerId);
