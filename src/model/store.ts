@@ -217,6 +217,12 @@ export class Store {
     return id;
   }
 
+  /** Remember (or forget) the published link of this board. Not an undo step: it is bookkeeping, not an edit. */
+  setShareId(id: string | undefined): void {
+    if (id) this.doc.shareId = id; else delete this.doc.shareId;
+    this.emit("doc");
+  }
+
   /** Add a zone and select it. The size is clamped to the minimum and everything snaps to half cells. */
   addZone(gx: number, gy: number, w: number, h: number, label = "Zone", color?: string): string {
     const id = genId("z");
@@ -239,6 +245,7 @@ export class Store {
       d.texts = next.texts;
       d.zones = next.zones ?? [];
       d.steps = next.steps;
+      if (next.shareId) d.shareId = next.shareId; else delete d.shareId; // a different board does not inherit the old link
     });
     this.selection.clear();
     this.emit("selection");

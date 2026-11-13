@@ -26,6 +26,11 @@ export const UI_ICONS = {
   film: wrap('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14M3 9.5h5M3 14.5h5M16 9.5h5M16 14.5h5"/>'),
   zone: wrap('<rect x="3" y="5" width="18" height="14" rx="4" stroke-dasharray="3 2.4"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/>'),
   importFile: wrap('<path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/><path d="M5 17v4M19 17v4"/>'),
+  play: wrap('<path d="M7 4.5v15l12-7.5z"/>'),
+  pause: wrap('<path d="M8 5v14M16 5v14"/>'),
+  share: wrap('<circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="6" r="2.6"/><circle cx="18" cy="18" r="2.6"/><path d="M8.3 10.8l7.4-3.6M8.3 13.2l7.4 3.6"/>'),
+  copy: wrap('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'),
+  close: wrap('<path d="M6 6l12 12M18 6L6 18"/>'),
   trash: wrap('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
   swap: wrap('<path d="M7 4L3 8l4 4"/><path d="M3 8h13"/><path d="M17 20l4-4-4-4"/><path d="M21 16H8"/>'),
 };

@@ -98,7 +98,11 @@ export interface DocData {
   zones: ZoneData[];
   /** Written step list. Badge N on an arrow refers to steps[N - 1]. */
   steps: string[];
+  /** Id of the published copy (the `v/<id>` link), set by Publish so a later Publish can update it. */
+  shareId?: string;
 }
+
+export const isShareId = (v: unknown): v is string => typeof v === "string" && /^[a-z0-9]{8,32}$/.test(v);
 
 export const GRID_SNAP = 0.5;
 /** Two nodes overlap when they are closer than this on both axes (in cells). */

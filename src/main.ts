@@ -11,7 +11,9 @@ import { applySavedTheme, readTheme, toggleTheme } from "./theme";
 import { h } from "./ui/dom";
 import { Inspector } from "./ui/inspector";
 import { Legend } from "./ui/legend";
+import { openExamples } from "./ui/examples";
 import { Palette } from "./ui/palette";
+import { openShare } from "./ui/share";
 import { collapsible, panelHead, restorePanels } from "./ui/panels";
 import { StepsPanel } from "./ui/steps";
 import { Toolbar } from "./ui/toolbar";
@@ -90,9 +92,14 @@ function boot(): void {
       toast("Board cleared. Press Cmd/Ctrl+Z to bring it back.");
     },
     loadExample() {
-      if (store.itemCount > 0 && !confirm("Replace the current board with the example?")) return;
-      store.load(exampleDoc());
-      view.fit();
+      openExamples({
+        page: location.href,
+        open: (doc) => { store.replace(doc); view.fit(); toast(`Opened "${doc.title}". Undo brings your previous board back.`); },
+        fail: (message) => toast(message, "error"),
+      });
+    },
+    share() {
+      openShare({ store, toast, openDoc: (doc) => { store.replace(doc); view.fit(); } });
     },
     saveBoard() {
       const url = URL.createObjectURL(new Blob([stringifyDoc(store.doc)], { type: "application/json" }));

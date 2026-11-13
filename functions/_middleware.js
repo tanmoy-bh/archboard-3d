@@ -49,6 +49,14 @@ function redirectHome(request, extra = {}) {
   return new Response(null, { status: 303, headers: { Location: new URL("/", request.url).toString(), ...privateHeaders, ...extra } });
 }
 
+const PUBLIC_PREFIXES = ["/view/", "/assets/", "/diagrams/", "/api/d/", "/v/"];
+
+/** GET or HEAD for the viewer page, its scripts, the example files, the public board read and the short link. */
+export function isPublicRead(request, url) {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  return url.pathname === "/view" || PUBLIC_PREFIXES.some((p) => url.pathname.startsWith(p));
+}
+
 export async function onRequest({ request, env, next }) {
   const url = new URL(request.url);
   const passphrase = env.ACCESS_PASSPHRASE;
@@ -59,6 +67,15 @@ export async function onRequest({ request, env, next }) {
 
   // Public assets the lock screen itself needs.
   if (url.pathname === "/favicon.svg" || url.pathname === "/robots.txt") return next();
+
+  // The read-only viewer and what it shows are open to anyone with the link, so they can be embedded in other
+  // pages. Reads only. The editor page, every write route and the owner's list stay behind the passphrase.
+  if (isPublicRead(request, url)) {
+    const res = await next();
+    const out = new Response(res.body, res);
+    out.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return out;
+  }
 
   if (url.pathname === "/__logout") {
     return redirectHome(request, { "Set-Cookie": `${COOKIE}=; Max-Age=0; HttpOnly; Secure; SameSite=Lax` });

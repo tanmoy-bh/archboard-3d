@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "title": "Layers: edge, BFF and middleware",
+  "nodes": [
+    {
+      "id": "n1",
+      "gx": 0,
+      "gy": 2,
+      "icon": "phone",
+      "label": "Mobile client"
+    },
+    {
+      "id": "n2",
+      "gx": 0,
+      "gy": 0.5,
+      "icon": "cdn",
+      "label": "CDN"
+    },
+    {
+      "id": "n3",
+      "gx": 2,
+      "gy": 2,
+      "icon": "gateway",
+      "label": "Load balancer"
+    },
+    {
+      "id": "n4",
+      "gx": 2,
+      "gy": 0.5,
+      "icon": "firewall",
+      "label": "WAF"
+    },
+    {
+      "id": "n5",
+      "gx": 4.5,
+      "gy": 1,
+      "icon": "svc",
+      "label": "Web BFF"
+    },
+    {
+      "id": "n6",
+      "gx": 4.5,
+      "gy": 2.5,
+      "icon": "svc",
+      "label": "Mobile BFF"
+    },
+    {
+      "id": "n7",
+      "gx": 7.5,
+      "gy": 0.5,
+      "icon": "identity",
+      "label": "Auth service"
+    },
+    {
+      "id": "n8",
+      "gx": 9,
+      "gy": 0.5,
+      "icon": "svc",
+      "label": "Order service"
+    },
+    {
+      "id": "n9",
+      "gx": 7.5,
+      "gy": 2.5,
+      "icon": "bell",
+      "label": "Notifications"
+    },
+    {
+      "id": "n10",
+      "gx": 9,
+      "gy": 2.5,
+      "icon": "queue",
+      "label": "Order queue"
+    },
+    {
+      "id": "n11",
+      "gx": 7.5,
+      "gy": 4.5,
+      "icon": "db",
+      "label": "Orders DB"
+    },
+    {
+      "id": "n12",
+      "gx": 9,
+      "gy": 4,
+      "icon": "blob",
+      "label": "Invoices"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "n1",
+      "to": "n3",
+      "label": "HTTPS"
+    },
+    {
+      "id": "e2",
+      "from": "n3",
+      "to": "n5"
+    },
+    {
+      "id": "e3",
+      "from": "n3",
+      "to": "n6"
+    },
+    {
+      "id": "e4",
+      "from": "n5",
+      "to": "n7",
+      "label": "verify"
+    },
+    {
+      "id": "e5",
+      "from": "n6",
+      "to": "n8",
+      "label": "place order"
+    },
+    {
+      "id": "e6",
+      "from": "n8",
+      "to": "n10",
+      "dash": true
+    },
+    {
+      "id": "e7",
+      "from": "n10",
+      "to": "n9",
+      "label": "notify",
+      "dash": true
+    },
+    {
+      "id": "e8",
+      "from": "n8",
+      "to": "n11",
+      "both": true
+    },
+    {
+      "id": "e9",
+      "from": "n8",
+      "to": "n12",
+      "both": true
+    },
+    {
+      "id": "e10",
+      "from": "n2",
+      "to": "n1",
+      "label": "static"
+    }
+  ],
+  "texts": [
+    {
+      "id": "t1",
+      "gx": 4.5,
+      "gy": 4,
+      "text": "Request flow",
+      "size": "m"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "gx": 1,
+      "gy": -0.5,
+      "w": 2,
+      "h": 4,
+      "label": "Edge",
+      "color": "#d6b656"
+    },
+    {
+      "id": "z2",
+      "gx": 3.5,
+      "gy": 0,
+      "w": 2.5,
+      "h": 3.5,
+      "label": "BFF layer",
+      "color": "#6c8ebf"
+    },
+    {
+      "id": "z3",
+      "gx": 6.5,
+      "gy": -0.5,
+      "w": 3.5,
+      "h": 4,
+      "label": "Middleware layer",
+      "color": "#82b366"
+    }
+  ],
+  "steps": []
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "ticketing",
+    "title": "Ticketing: held seats",
+    "description": "Ticket holds: a waiting room, a seat map, a booking service with timed holds and a payment provider."
+  },
+  {
+    "id": "layers",
+    "title": "Layers: edge, BFF and middleware",
+    "description": "Imported from draw.io: edge, BFF and middleware layers drawn as zones, with cloud icons mapped to components."
+  },
+  {
+    "id": "cloud-serverless",
+    "title": "Serverless order pipeline",
+    "description": "Cloud components and three zones. The API gateway sits on a zone border."
+  },
+  {
+    "id": "ai-rag",
+    "title": "RAG assistant",
+    "description": "An AI assistant that looks up documents before answering: ingestion on top, answering below."
+  }
+]

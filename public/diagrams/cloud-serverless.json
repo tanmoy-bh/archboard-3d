@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "title": "Serverless order pipeline",
+  "nodes": [
+    {
+      "id": "user",
+      "gx": 0,
+      "gy": 2,
+      "icon": "person",
+      "label": "Customer"
+    },
+    {
+      "id": "dns",
+      "gx": 2,
+      "gy": 0.5,
+      "icon": "dns",
+      "label": "DNS"
+    },
+    {
+      "id": "waf",
+      "gx": 2,
+      "gy": 2,
+      "icon": "firewall",
+      "label": "WAF"
+    },
+    {
+      "id": "cdn",
+      "gx": 2,
+      "gy": 3.5,
+      "icon": "cdn",
+      "label": "CDN (static pages)"
+    },
+    {
+      "id": "gw",
+      "gx": 4,
+      "gy": 2,
+      "icon": "gateway",
+      "label": "API gateway"
+    },
+    {
+      "id": "auth",
+      "gx": 7.5,
+      "gy": 0.5,
+      "icon": "identity",
+      "label": "Identity (IAM)"
+    },
+    {
+      "id": "fn1",
+      "gx": 5.5,
+      "gy": 1,
+      "icon": "lambda",
+      "label": "Order function"
+    },
+    {
+      "id": "fn2",
+      "gx": 5.5,
+      "gy": 3.5,
+      "icon": "lambda",
+      "label": "Payment function"
+    },
+    {
+      "id": "db",
+      "gx": 11,
+      "gy": 0.5,
+      "icon": "db",
+      "label": "Orders database"
+    },
+    {
+      "id": "q",
+      "gx": 11,
+      "gy": 2,
+      "icon": "queue",
+      "label": "Order queue"
+    },
+    {
+      "id": "sns",
+      "gx": 11,
+      "gy": 3.5,
+      "icon": "bell",
+      "label": "Notifications"
+    },
+    {
+      "id": "s3",
+      "gx": 13,
+      "gy": 0.5,
+      "icon": "blob",
+      "label": "Invoices (object storage)"
+    },
+    {
+      "id": "kms",
+      "gx": 13,
+      "gy": 2,
+      "icon": "key",
+      "label": "Secrets and keys"
+    },
+    {
+      "id": "dw",
+      "gx": 13,
+      "gy": 3.5,
+      "icon": "warehouse",
+      "label": "Analytics warehouse"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "user",
+      "to": "waf",
+      "label": "HTTPS",
+      "step": 1
+    },
+    {
+      "id": "e2",
+      "from": "waf",
+      "to": "gw",
+      "label": "clean traffic",
+      "step": 1
+    },
+    {
+      "id": "e3",
+      "from": "cdn",
+      "to": "user",
+      "label": "static pages",
+      "dash": true
+    },
+    {
+      "id": "e4",
+      "from": "gw",
+      "to": "auth",
+      "label": "verify token",
+      "step": 2
+    },
+    {
+      "id": "e5",
+      "from": "gw",
+      "to": "fn1",
+      "label": "POST /orders",
+      "step": 2
+    },
+    {
+      "id": "e6",
+      "from": "fn1",
+      "to": "db",
+      "label": "save order",
+      "step": 3,
+      "hot": true
+    },
+    {
+      "id": "e7",
+      "from": "fn1",
+      "to": "q",
+      "label": "order placed",
+      "step": 4
+    },
+    {
+      "id": "e8",
+      "from": "q",
+      "to": "fn2",
+      "label": "consume",
+      "dash": true,
+      "step": 4
+    },
+    {
+      "id": "e9",
+      "from": "fn2",
+      "to": "kms",
+      "label": "payment key"
+    },
+    {
+      "id": "e10",
+      "from": "fn2",
+      "to": "sns",
+      "label": "notify",
+      "step": 5
+    },
+    {
+      "id": "e11",
+      "from": "fn2",
+      "to": "s3",
+      "label": "invoice PDF",
+      "step": 5
+    },
+    {
+      "id": "e12",
+      "from": "db",
+      "to": "dw",
+      "label": "nightly export",
+      "dash": true
+    },
+    {
+      "id": "e13",
+      "from": "dns",
+      "to": "waf",
+      "label": "resolve"
+    }
+  ],
+  "texts": [],
+  "zones": [
+    {
+      "id": "z1",
+      "label": "Edge",
+      "gx": 1,
+      "gy": -0.5,
+      "w": 3,
+      "h": 5.5,
+      "color": "#e0a526"
+    },
+    {
+      "id": "z2",
+      "label": "Compute",
+      "gx": 4,
+      "gy": -0.5,
+      "w": 4.5,
+      "h": 5.5,
+      "color": "#4f8cff"
+    },
+    {
+      "id": "z3",
+      "label": "Data",
+      "gx": 9.5,
+      "gy": -0.5,
+      "w": 4.5,
+      "h": 5.5,
+      "color": "#3fb67a"
+    }
+  ],
+  "steps": [
+    "Traffic enters through DNS, the firewall and the API gateway. The gateway sits on the border of the edge and compute zones.",
+    "The gateway checks the caller's identity, then hands the request to the order function.",
+    "The order function saves the order (the key path).",
+    "It puts a message on the queue. The payment function picks it up when it can.",
+    "The payment function notifies the customer and writes the invoice."
+  ]
+}

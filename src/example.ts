@@ -50,7 +50,7 @@ export function exampleDoc(): DocData {
     edges: edges.map(([from, to, o], i): EdgeData => ({ id: `e${i + 1}`, from, to, ...o })),
     texts: [],
     zones: [
-      { id: "z1", gx: 1.5, gy: -0.75, w: 5.5, h: 3, label: "Browse and waiting room", color: "#4f8cff" },
+      { id: "z1", gx: 1.5, gy: -0.5, w: 5.5, h: 2.5, label: "Browse and waiting room", color: "#4f8cff" },
       { id: "z2", gx: 0.5, gy: 2.5, w: 5, h: 3, label: "Booking and payment", color: "#e0a526" },
     ],
     steps: [

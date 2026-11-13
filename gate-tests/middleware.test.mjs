@@ -66,3 +66,32 @@ test("favicon is public so the lock screen can show it", async () => {
   const res = await call("/favicon.svg");
   assert.equal(res.status, 200);
 });
+
+test("the viewer, its scripts, example files, board reads and short links are public for reads", async () => {
+  for (const path of ["/view/", "/view", "/view/?id=abcdefghijkl", "/assets/view-abc.js", "/diagrams/index.json", "/diagrams/ticketing.json", "/api/d/abcdefghijkl", "/v/abcdefghijkl"]) {
+    const res = await call(path);
+    assert.equal(res.status, 200, path);
+    assert.equal(res.headers.get("X-Robots-Tag"), "noindex, nofollow", path);
+    assert.equal(await res.text(), "<h1>app</h1>", path);
+  }
+  const head = await call("/view/", { method: "HEAD" });
+  assert.equal(head.status, 200);
+});
+
+test("the editor, the owner's routes and every write stay behind the passphrase", async () => {
+  for (const path of ["/", "/index.html", "/api/diagrams", "/api/diagrams/abcdefghijkl", "/api/dx", "/viewer", "/views/", "/diagramsx/a.json"]) {
+    const res = await call(path);
+    assert.equal(res.status, 401, path);
+  }
+  for (const [method, path] of [["POST", "/api/d/abcdefghijkl"], ["PUT", "/api/diagrams/abcdefghijkl"], ["DELETE", "/api/diagrams/abcdefghijkl"], ["POST", "/api/diagrams"], ["POST", "/v/abcdefghijkl"]]) {
+    const res = await call(path, { method, body: "{}" });
+    assert.equal(res.status, 401, `${method} ${path}`);
+  }
+});
+
+test("a public response is not forced to be uncacheable or framed", async () => {
+  const res = await onRequest({ request: new Request(ORIGIN + "/view/"), env, next: async () => new Response("x", { headers: { "Cache-Control": "public, max-age=30" } }) });
+  assert.equal(res.headers.get("Cache-Control"), "public, max-age=30");
+  assert.equal(res.headers.get("X-Frame-Options"), null);
+  assert.equal(res.headers.get("Content-Security-Policy"), null);
+});

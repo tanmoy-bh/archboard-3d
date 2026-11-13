@@ -1,0 +1,253 @@
+{
+  "version": 1,
+  "title": "Ticketing: held seats",
+  "nodes": [
+    {
+      "id": "cdn",
+      "gx": 0,
+      "gy": 0,
+      "icon": "cdn",
+      "label": "CDN"
+    },
+    {
+      "id": "cl",
+      "gx": 0,
+      "gy": 1.5,
+      "icon": "phone",
+      "label": "Client"
+    },
+    {
+      "id": "gw",
+      "gx": 1,
+      "gy": 1.5,
+      "icon": "gateway",
+      "label": "LB / Gateway"
+    },
+    {
+      "id": "wr",
+      "gx": 2,
+      "gy": 0,
+      "icon": "svc",
+      "label": "Waiting Room Service"
+    },
+    {
+      "id": "k",
+      "gx": 4,
+      "gy": 0,
+      "icon": "queue",
+      "label": "Queue (Kafka)"
+    },
+    {
+      "id": "tk",
+      "gx": 6,
+      "gy": 0,
+      "icon": "redis",
+      "label": "Redis (Token Status)"
+    },
+    {
+      "id": "se",
+      "gx": 2,
+      "gy": 1.5,
+      "icon": "svc",
+      "label": "Search Service"
+    },
+    {
+      "id": "sc",
+      "gx": 3,
+      "gy": 1.5,
+      "icon": "redis",
+      "label": "Seating Cache (Redis Bitfield)"
+    },
+    {
+      "id": "es",
+      "gx": 4,
+      "gy": 1.5,
+      "icon": "es",
+      "label": "Elasticsearch"
+    },
+    {
+      "id": "bk",
+      "gx": 2,
+      "gy": 3,
+      "icon": "svc",
+      "label": "Booking Service"
+    },
+    {
+      "id": "sql",
+      "gx": 4,
+      "gy": 3,
+      "icon": "db",
+      "label": "SQL Database"
+    },
+    {
+      "id": "ar",
+      "gx": 3,
+      "gy": 4,
+      "icon": "redis",
+      "label": "Active Reservations (Redis)"
+    },
+    {
+      "id": "dq",
+      "gx": 4.5,
+      "gy": 4.5,
+      "icon": "queue",
+      "label": "Delay Queue (Redis)"
+    },
+    {
+      "id": "pay",
+      "gx": 1,
+      "gy": 3,
+      "icon": "svc",
+      "label": "Payment Service"
+    },
+    {
+      "id": "pp",
+      "gx": 0,
+      "gy": 3,
+      "icon": "card",
+      "label": "Payment Provider"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "cl",
+      "to": "cdn",
+      "label": "static pages"
+    },
+    {
+      "id": "e2",
+      "from": "cl",
+      "to": "gw",
+      "step": 1
+    },
+    {
+      "id": "e3",
+      "from": "gw",
+      "to": "wr",
+      "label": "join queue",
+      "step": 1
+    },
+    {
+      "id": "e4",
+      "from": "wr",
+      "to": "k",
+      "label": "enqueue user"
+    },
+    {
+      "id": "e5",
+      "from": "k",
+      "to": "wr",
+      "label": "admit N users / sec",
+      "dash": true
+    },
+    {
+      "id": "e6",
+      "from": "wr",
+      "to": "tk",
+      "label": "token status (allowed in?)"
+    },
+    {
+      "id": "e7",
+      "from": "gw",
+      "to": "se",
+      "label": "browse"
+    },
+    {
+      "id": "e8",
+      "from": "se",
+      "to": "sc",
+      "label": "seat map",
+      "step": 2
+    },
+    {
+      "id": "e9",
+      "from": "se",
+      "to": "es",
+      "label": "search events"
+    },
+    {
+      "id": "e10",
+      "from": "gw",
+      "to": "bk"
+    },
+    {
+      "id": "e11",
+      "from": "bk",
+      "to": "ar",
+      "label": "hold seat (10 min TTL)",
+      "step": 2,
+      "hot": true
+    },
+    {
+      "id": "e12",
+      "from": "bk",
+      "to": "dq",
+      "label": "expire hold later",
+      "step": 5,
+      "dash": true
+    },
+    {
+      "id": "e13",
+      "from": "bk",
+      "to": "sql",
+      "label": "mark SOLD (if held by me)",
+      "step": 4,
+      "hot": true
+    },
+    {
+      "id": "e14",
+      "from": "sql",
+      "to": "es",
+      "label": "CDC sync"
+    },
+    {
+      "id": "e15",
+      "from": "gw",
+      "to": "pay",
+      "label": "pay"
+    },
+    {
+      "id": "e16",
+      "from": "pay",
+      "to": "pp",
+      "label": "charge",
+      "step": 3
+    },
+    {
+      "id": "e17",
+      "from": "pay",
+      "to": "bk",
+      "label": "payment OK",
+      "step": 4
+    }
+  ],
+  "texts": [],
+  "zones": [
+    {
+      "id": "z1",
+      "gx": 1.5,
+      "gy": -0.5,
+      "w": 5.5,
+      "h": 2.5,
+      "label": "Browse and waiting room",
+      "color": "#4f8cff"
+    },
+    {
+      "id": "z2",
+      "gx": 0.5,
+      "gy": 2.5,
+      "w": 5,
+      "h": 3,
+      "label": "Booking and payment",
+      "color": "#e0a526"
+    }
+  ],
+  "steps": [
+    "The waiting room admits users in batches (Kafka plus token status in Redis).",
+    "Browse the seat map, then hold a seat with a 10 minute time to live.",
+    "Pay through the payment provider.",
+    "Mark the seat SOLD in SQL with a conditional update.",
+    "A delay queue releases holds that were never paid."
+  ]
+}

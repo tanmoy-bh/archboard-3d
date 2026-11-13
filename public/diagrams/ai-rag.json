@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "title": "RAG assistant",
+  "nodes": [
+    {
+      "id": "docs",
+      "gx": 1,
+      "gy": 0.5,
+      "icon": "doc",
+      "label": "Documents and wiki"
+    },
+    {
+      "id": "etl",
+      "gx": 3,
+      "gy": 0.5,
+      "icon": "etl",
+      "label": "Chunk and embed job"
+    },
+    {
+      "id": "emb",
+      "gx": 5,
+      "gy": 0.5,
+      "icon": "embed",
+      "label": "Embedding model"
+    },
+    {
+      "id": "vec",
+      "gx": 7,
+      "gy": 0.5,
+      "icon": "vector",
+      "label": "Vector database"
+    },
+    {
+      "id": "user",
+      "gx": 1,
+      "gy": 4,
+      "icon": "person",
+      "label": "User"
+    },
+    {
+      "id": "api",
+      "gx": 3,
+      "gy": 4,
+      "icon": "svc",
+      "label": "Chat API"
+    },
+    {
+      "id": "guard",
+      "gx": 5,
+      "gy": 3,
+      "icon": "guard",
+      "label": "Guardrails"
+    },
+    {
+      "id": "ret",
+      "gx": 5,
+      "gy": 5,
+      "icon": "retriever",
+      "label": "Retriever and reranker"
+    },
+    {
+      "id": "mem",
+      "gx": 3,
+      "gy": 5.5,
+      "icon": "memory",
+      "label": "Conversation memory"
+    },
+    {
+      "id": "prompt",
+      "gx": 7.5,
+      "gy": 4,
+      "icon": "prompt",
+      "label": "Prompt template"
+    },
+    {
+      "id": "llm",
+      "gx": 9.5,
+      "gy": 4,
+      "icon": "llm",
+      "label": "LLM"
+    },
+    {
+      "id": "tools",
+      "gx": 9.5,
+      "gy": 5.5,
+      "icon": "tools",
+      "label": "Tool calls"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "docs",
+      "to": "etl",
+      "label": "new files"
+    },
+    {
+      "id": "e2",
+      "from": "etl",
+      "to": "emb",
+      "label": "text chunks"
+    },
+    {
+      "id": "e3",
+      "from": "emb",
+      "to": "vec",
+      "label": "vectors"
+    },
+    {
+      "id": "e4",
+      "from": "user",
+      "to": "api",
+      "label": "question",
+      "step": 1
+    },
+    {
+      "id": "e5",
+      "from": "api",
+      "to": "guard",
+      "label": "check input",
+      "step": 2
+    },
+    {
+      "id": "e6",
+      "from": "guard",
+      "to": "ret",
+      "label": "safe query",
+      "step": 3
+    },
+    {
+      "id": "e7",
+      "from": "ret",
+      "to": "vec",
+      "label": "top-k search",
+      "step": 3,
+      "hot": true
+    },
+    {
+      "id": "e8",
+      "from": "vec",
+      "to": "ret",
+      "label": "matches",
+      "dash": true,
+      "step": 3
+    },
+    {
+      "id": "e9",
+      "from": "ret",
+      "to": "prompt",
+      "label": "context",
+      "step": 4
+    },
+    {
+      "id": "e10",
+      "from": "mem",
+      "to": "prompt",
+      "label": "history",
+      "step": 4
+    },
+    {
+      "id": "e11",
+      "from": "prompt",
+      "to": "llm",
+      "label": "full prompt",
+      "step": 5,
+      "hot": true
+    },
+    {
+      "id": "e12",
+      "from": "llm",
+      "to": "tools",
+      "label": "function call",
+      "both": true
+    },
+    {
+      "id": "e13",
+      "from": "llm",
+      "to": "api",
+      "label": "answer",
+      "dash": true,
+      "step": 6
+    }
+  ],
+  "texts": [],
+  "zones": [
+    {
+      "id": "z1",
+      "label": "Ingestion",
+      "gx": 0,
+      "gy": -0.5,
+      "w": 8.5,
+      "h": 2.5,
+      "color": "#9b7cf0"
+    },
+    {
+      "id": "z2",
+      "label": "Answering",
+      "gx": 0,
+      "gy": 2.5,
+      "w": 11,
+      "h": 4,
+      "color": "#2bb5a8"
+    }
+  ],
+  "steps": [
+    "The user asks a question through the chat API.",
+    "Guardrails check the question.",
+    "The retriever searches the vector database, built earlier by the ingestion job, and reranks the matches.",
+    "The prompt template joins the matches with the conversation history.",
+    "The LLM answers, calling tools if it needs them.",
+    "The answer goes back to the user."
+  ]
+}

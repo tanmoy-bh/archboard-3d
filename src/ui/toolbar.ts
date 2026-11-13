@@ -11,6 +11,7 @@ export interface FileActions {
   saveBoard(): void;
   exportPng(): void;
   exportGif(): void;
+  share(): void;
   loadExample(): void;
   toggleTheme(): void;
   toggleAutoRotate(): void;
@@ -77,7 +78,7 @@ export class Toolbar {
       sep(),
       modeToggle,
       h("span", { class: "grow" }),
-      btn("sparkle", "Load the example board", files.loadExample, "Example"),
+      btn("sparkle", "Start from an example board", files.loadExample, "Example"),
       btn("trash", "Remove everything from the board. Undo brings it back.", files.clearAll, "Clear"),
       btn("file", "New empty board", files.newBoard, "New"),
       btn("open", "Open a board from a JSON file", files.openBoard, "Open"),
@@ -85,6 +86,7 @@ export class Toolbar {
       btn("save", "Save the board as a JSON file", files.saveBoard, "Save"),
       btn("image", "Export a PNG image", files.exportPng, "PNG"),
       btn("film", "Export an animated GIF. Turns the board once if Auto is on, otherwise the view stays still", files.exportGif, "GIF"),
+      btn("share", "Share this board: a link, embed code for another website, or a short link you can update", files.share, "Share"),
       sep(),
       this.themeBtn,
       // The deployed site is gated on the server; this signs you out of it. There is no gate in local dev.

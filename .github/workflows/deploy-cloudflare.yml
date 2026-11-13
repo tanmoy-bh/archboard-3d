@@ -37,8 +37,8 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Test passphrase gate
-        run: node --test gate-tests/middleware.test.mjs
+      - name: Test passphrase gate and publish API
+        run: node --test gate-tests/middleware.test.mjs gate-tests/api.test.mjs
 
       - name: Build
         run: npm run build
