@@ -1,4 +1,5 @@
 import { ICON_NAMES, PALETTE_GROUPS } from "../glyphs/catalog";
+import { searchComponents } from "../glyphs/search";
 import { glyphImage } from "../glyphs/thumbs";
 import type { Controller } from "../interaction/controller";
 import type { IconKey } from "../model/types";
@@ -14,9 +15,25 @@ export class Palette {
   readonly el: HTMLElement;
   private buttons = new Map<IconKey, HTMLButtonElement>();
   private key = "";
+  private groups: { section: HTMLElement; icons: IconKey[] }[] = [];
+  private list = h("div", { class: "palette-list" });
+  private empty = h("p", { class: "muted palette-empty", hidden: true }, "No component matches. Try another word, such as queue, cache or kubernetes.");
+  private search = h("input", { class: "palette-search", type: "search", placeholder: "Search components", "aria-label": "Search components", autocomplete: "off", spellcheck: "false" });
   private body = h("div", { class: "panel-body" });
 
   constructor(private controller: Controller) {
+    this.body.append(h("p", { class: "hint" }, "Click one, then click the floor. Or drag it onto the board."), this.search, this.empty, this.list);
+    this.search.addEventListener("input", () => this.filter());
+    this.search.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.search.value) {
+        this.search.value = "";
+        this.filter();
+        e.stopPropagation();
+      } else if (e.key === "Enter") {
+        const first = [...this.buttons.entries()].find(([, b]) => !b.hidden);
+        if (first) this.controller.arm(first[0]);
+      }
+    });
     this.el = h("aside", { class: "palette", "aria-label": "Component palette" }, panelHead("Components", "panel:left", "Show components"), this.body);
   }
 
@@ -26,7 +43,8 @@ export class Palette {
     if (key === this.key) return;
     this.key = key;
     this.buttons.clear();
-    this.body.replaceChildren(h("p", { class: "hint" }, "Click one, then click the floor. Or drag it onto the board."));
+    this.groups = [];
+    this.list.replaceChildren();
     for (const group of PALETTE_GROUPS) {
       const grid = h("div", { class: "palette-grid" });
       for (const icon of group.icons) {
@@ -49,9 +67,31 @@ export class Palette {
       }
       const section = h("section", { class: "palette-group" }, h("h3", {}, group.title), grid);
       collapsible(section, "group:" + group.title, group.icons.length);
-      this.body.append(section);
+      this.list.append(section);
+      this.groups.push({ section, icons: group.icons });
     }
+    this.filter();
     this.refresh();
+  }
+
+  /** Show only the components that match the search box. Matching groups open up while a search is active. */
+  private filter(): void {
+    const query = this.search.value.trim();
+    const hits = searchComponents(query);
+    let shown = 0;
+    for (const g of this.groups) {
+      let any = false;
+      for (const icon of g.icons) {
+        const b = this.buttons.get(icon);
+        if (!b) continue;
+        b.hidden = !hits.has(icon);
+        if (!b.hidden) any = true;
+      }
+      g.section.hidden = !any;
+      if (any) shown += 1;
+    }
+    this.el.classList.toggle("searching", query !== "");
+    this.empty.hidden = shown > 0;
   }
 
   refresh(): void {

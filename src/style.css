@@ -83,6 +83,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .palette-item:hover { background: var(--panel-2); }
 .palette-item.active { border-style: solid; border-color: var(--accent); background: var(--panel-2); }
 .palette-item span { text-align: center; line-height: 1.15; overflow-wrap: anywhere; }
+.palette-search { width: 100%; margin: 0 0 4px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--board); color: var(--fg); }
+.palette-search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.palette [hidden] { display: none !important; }
+.palette.searching .palette-group.collapsed > :not(h3) { display: block; }
+.palette.searching .palette-group.collapsed > .palette-grid { display: grid; }
 
 /* ------------------------------------------------------------------ stage */
 .stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--board); }

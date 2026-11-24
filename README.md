@@ -51,6 +51,7 @@ Needs a browser with WebGL.
 | Do this | How |
 | --- | --- |
 | Add a component | Click a glyph in the left palette, then click the floor. Or drag it onto the board. Shift keeps the glyph armed. |
+| Find a component | Type in the **Search components** box at the top of the palette. It matches the name, the group and the usual cloud names (s3, kafka, k8s, iam), so `kafka` finds Queue and `cloud` shows the Cloud group. Enter arms the first match, Escape clears the box. |
 | Move | Drag a tile. Positions snap to half cells. Shift+click or Cmd/Ctrl+A for several. |
 | Connect | Press `C`, then drag from one tile to another (or click one, then the other). |
 | Logic blocks | The "Logic" section has flowchart blocks: Decision / condition (an amber diamond, for branches: connect two arrows out of it and label them "yes" and "no"), Start / end, Process / step, Loop / retry, Fork / join, Timer / schedule and Event / trigger. |
