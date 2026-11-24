@@ -1,4 +1,4 @@
-import { DocData, EdgeData, NodeData, TEXT_MAX_LENGTH, TextData, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, ZoneData, genId, isHexColor, isBoardId, isIconKey, isTextSize, snap } from "./types";
+import { DocData, EdgeData, NodeData, TEXT_MAX_LENGTH, TextData, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, ZoneData, genId, isHexColor, isBoardId, isIconKey, isTextSize, snap, snapNode } from "./types";
 
 export function stringifyDoc(doc: DocData): string {
   return JSON.stringify(doc, null, 2);
@@ -32,8 +32,8 @@ export function parseDoc(text: string): DocData {
     seen.add(id);
     nodes.push({
       id,
-      gx: snap(gx),
-      gy: snap(gy),
+      gx: snapNode(gx),
+      gy: snapNode(gy),
       icon: isIconKey(n.icon) ? n.icon : "svc",
       label: typeof n.label === "string" ? n.label : "",
     });

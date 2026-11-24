@@ -17,7 +17,7 @@ export function isIconKey(v: unknown): v is IconKey {
 
 export interface NodeData {
   id: string;
-  /** Column and row in grid cells. Snapped to half cells. */
+  /** Column and row in grid cells. Snapped to quarter cells. */
   gx: number;
   gy: number;
   icon: IconKey;
@@ -105,14 +105,18 @@ export interface DocData {
 export const isBoardId = (v: unknown): v is string => typeof v === "string" && /^[a-z0-9]{8,32}$/.test(v);
 
 export const GRID_SNAP = 0.5;
+/** Tiles snap finer than zones and text, so components can sit close together. */
+export const NODE_SNAP = 0.25;
 /** Two nodes overlap when they are closer than this on both axes (in cells). */
-export const NODE_MIN_GAP = 0.75;
+export const NODE_MIN_GAP = 0.5;
 
 export function emptyDoc(): DocData {
   return { version: 1, title: "Untitled architecture", nodes: [], edges: [], texts: [], zones: [], steps: [] };
 }
 
 export const snap = (v: number): number => Math.round(v / GRID_SNAP) * GRID_SNAP;
+/** Snap a tile position to quarter cells. */
+export const snapNode = (v: number): number => Math.round(v / NODE_SNAP) * NODE_SNAP;
 
 export function genId(prefix: string): string {
   return prefix + Math.random().toString(36).slice(2, 8);

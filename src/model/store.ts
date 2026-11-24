@@ -1,4 +1,4 @@
-import { DocData, EdgeData, IconKey, NODE_MIN_GAP, NodeData, TextData, ZONE_COLORS, ZONE_MIN, ZoneData, emptyDoc, genId, snap } from "./types";
+import { DocData, EdgeData, IconKey, NODE_MIN_GAP, NODE_SNAP, NodeData, TextData, ZONE_COLORS, ZONE_MIN, ZoneData, emptyDoc, genId, snap, snapNode } from "./types";
 
 export type ChangeKind = "doc" | "selection";
 export type Listener = (kind: ChangeKind) => void;
@@ -174,15 +174,15 @@ export class Store {
     );
   }
 
-  /** Nearest free grid position to (gx, gy), searching outwards in half cell steps. */
+  /** Nearest free grid position to (gx, gy), searching outwards in quarter cell steps. */
   nearestFree(gx: number, gy: number): { gx: number; gy: number } {
-    gx = snap(gx); gy = snap(gy);
+    gx = snapNode(gx); gy = snapNode(gy);
     if (this.isFree(gx, gy)) return { gx, gy };
     for (let r = 1; r <= 40; r++) {
       for (let dx = -r; dx <= r; dx++) {
         for (let dy = -r; dy <= r; dy++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-          const x = gx + dx * 0.5, y = gy + dy * 0.5;
+          const x = gx + dx * NODE_SNAP, y = gy + dy * NODE_SNAP;
           if (this.isFree(x, y)) return { gx: x, gy: y };
         }
       }
@@ -194,7 +194,7 @@ export class Store {
 
   addNode(icon: IconKey, gx: number, gy: number, label: string): string {
     const id = genId("n");
-    this.mutate((d) => { d.nodes.push({ id, gx: snap(gx), gy: snap(gy), icon, label }); });
+    this.mutate((d) => { d.nodes.push({ id, gx: snapNode(gx), gy: snapNode(gy), icon, label }); });
     this.select([id]);
     return id;
   }

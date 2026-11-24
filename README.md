@@ -52,7 +52,7 @@ Needs a browser with WebGL.
 | --- | --- |
 | Add a component | Click a glyph in the left palette, then click the floor. Or drag it onto the board. Shift keeps the glyph armed. |
 | Find a component | Type in the **Search components** box at the top of the palette. It matches the name, the group and the usual cloud names (s3, kafka, k8s, iam), so `kafka` finds Queue and `cloud` shows the Cloud group. Enter arms the first match, Escape clears the box. |
-| Move | Drag a tile. Positions snap to half cells. Shift+click or Cmd/Ctrl+A for several. |
+| Move | Drag a tile. Tiles snap to quarter cells, zones and text to half cells. Shift+click or Cmd/Ctrl+A for several. |
 | Connect | Press `C`, then drag from one tile to another (or click one, then the other). |
 | Logic blocks | The "Logic" section has flowchart blocks: Decision / condition (an amber diamond, for branches: connect two arrows out of it and label them "yes" and "no"), Start / end, Process / step, Loop / retry, Fork / join, Timer / schedule and Event / trigger. |
 | Networking | The "Networking" section has HTTP, REST API, WebSocket (two-way), Server-sent events (one-way stream) and Webhook, for labelling how components talk to each other. |
@@ -128,7 +128,7 @@ Plain JSON, version 1:
 }
 ```
 
-`gx` and `gy` are grid cells (half cells allowed). `size` is `"s"`, `"m"` or `"l"`, and `texts` and `zones` are optional in older files. A zone's `gx`, `gy` is its top left corner and `w`, `h` its size in cells. `boardId` is set by Save so a later Save updates the same saved board (older files called it `shareId`). Icons are the glyph keys listed in
+`gx` and `gy` are grid cells (quarter cells allowed for tiles, half cells for zones and text). `size` is `"s"`, `"m"` or `"l"`, and `texts` and `zones` are optional in older files. A zone's `gx`, `gy` is its top left corner and `w`, `h` its size in cells. `boardId` is set by Save so a later Save updates the same saved board (older files called it `shareId`). Icons are the glyph keys listed in
 `src/model/types.ts`. Unknown icons fall back to a service glyph, and arrows that point at missing
 tiles are dropped on load.
 

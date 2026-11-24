@@ -1,6 +1,6 @@
 import { ICON_NAMES } from "../glyphs/catalog";
 import {
-  DocData, EdgeData, NODE_MIN_GAP, NodeData, TextData, TextSize, ZONE_COLORS, ZONE_LABEL_MAX, ZoneData, emptyDoc, isHexColor, snap,
+  DocData, EdgeData, NodeData, TextData, TextSize, ZONE_COLORS, ZONE_LABEL_MAX, ZoneData, emptyDoc, isHexColor, snap,
 } from "../model/types";
 import { mapIcon } from "./iconMap";
 import { XmlNode, decodeEntities, parseXml } from "./xml";
@@ -286,7 +286,9 @@ function convert(model: XmlNode, pageName: string, pages: number): ImportResult 
 
   // place tiles, nudging any that would overlap
   const placed: { gx: number; gy: number }[] = [];
-  const free = (gx: number, gy: number) => !placed.some((p) => Math.abs(p.gx - gx) < NODE_MIN_GAP && Math.abs(p.gy - gy) < NODE_MIN_GAP);
+  /** Imported tiles keep at least a cell between them, as before tiles could sit closer. */
+  const IMPORT_MIN_GAP = 0.75;
+  const free = (gx: number, gy: number) => !placed.some((p) => Math.abs(p.gx - gx) < IMPORT_MIN_GAP && Math.abs(p.gy - gy) < IMPORT_MIN_GAP);
   const nodes: NodeData[] = [];
   const members = new Map<string, { gx: number; gy: number }[]>(); // zone cell id -> member tiles, for sizing
   for (const t of [...tiles].sort((a, b) => a.c.y - b.c.y || a.c.x - b.c.x)) {

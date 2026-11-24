@@ -76,7 +76,7 @@ export class SceneView {
 
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial());
     this.floor.position.y = -0.002;
-    this.grid = new THREE.GridHelper(SP * 90, 90);
+    this.grid = new THREE.GridHelper(SP * 90, 180);
     this.grid.position.set(SP / 2, 0.002, SP / 2);
     const gm = this.grid.material as THREE.LineBasicMaterial;
     gm.transparent = true;

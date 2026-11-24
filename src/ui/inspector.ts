@@ -1,6 +1,6 @@
 import { ICON_NAMES } from "../glyphs/catalog";
 import type { Store } from "../model/store";
-import { ICON_KEYS, IconKey, TEXT_MAX_LENGTH, TEXT_SIZES, TEXT_SIZE_NAMES, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, isHexColor, isIconKey, isTextSize, snap } from "../model/types";
+import { ICON_KEYS, IconKey, TEXT_MAX_LENGTH, TEXT_SIZES, TEXT_SIZE_NAMES, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, isHexColor, isIconKey, isTextSize, snap, snapNode } from "../model/types";
 import { h, svg } from "./dom";
 import { UI_ICONS } from "./icons";
 
@@ -150,7 +150,7 @@ export class Inspector {
 
     const move = (axis: "gx" | "gy") => (v: number | undefined) => {
       if (v === undefined || !Number.isFinite(v)) return;
-      const next = snap(v);
+      const next = snapNode(v);
       const n = node();
       const gx = axis === "gx" ? next : n.gx, gy = axis === "gy" ? next : n.gy;
       if (!this.store.isFree(gx, gy, [id])) return;
@@ -163,7 +163,7 @@ export class Inspector {
       h("div", { class: "row2" },
         this.field("Column", this.number(() => node().gx, move("gx"), 0.5)),
         this.field("Row", this.number(() => node().gy, move("gy"), 0.5))),
-      h("p", { class: "muted" }, "Positions snap to half cells. Tiles need a full cell of space between them on at least one axis."),
+      h("p", { class: "muted" }, "Tiles snap to quarter cells and need half a cell of space between them on at least one axis."),
       this.action("sparkle", "Duplicate", () => this.store.duplicateSelected()),
       this.action("trash", "Delete", () => this.store.deleteSelected(), true),
     );

@@ -3,12 +3,12 @@ import { Store } from "../src/model/store";
 import { parseDoc, stringifyDoc } from "../src/model/serialize";
 
 describe("Store", () => {
-  it("adds nodes snapped to half cells and selects them", () => {
+  it("adds nodes snapped to quarter cells and selects them", () => {
     const s = new Store();
     const id = s.addNode("db", 1.26, 2.74, "Orders DB");
     const n = s.node(id)!;
-    expect(n.gx).toBe(1.5);
-    expect(n.gy).toBe(2.5);
+    expect(n.gx).toBe(1.25);
+    expect(n.gy).toBe(2.75);
     expect([...s.selection]).toEqual([id]);
   });
 
@@ -97,8 +97,9 @@ describe("Store", () => {
   it("finds free space and refuses overlaps", () => {
     const s = new Store();
     s.addNode("svc", 0, 0, "A");
-    expect(s.isFree(0.5, 0.5)).toBe(false);
-    expect(s.isFree(1, 0)).toBe(true);
+    expect(s.isFree(0.25, 0.25)).toBe(false);
+    expect(s.isFree(0.5, 0)).toBe(true);
+    expect(s.isFree(0.25, 0.5)).toBe(true);
     const p = s.nearestFree(0, 0);
     expect(s.isFree(p.gx, p.gy)).toBe(true);
   });
@@ -161,7 +162,7 @@ describe("serialize", () => {
     expect(doc.nodes).toHaveLength(2);
     expect(new Set(doc.nodes.map((n) => n.id)).size).toBe(2);
     expect(doc.nodes[0].icon).toBe("svc");
-    expect(doc.nodes[0].gx).toBe(0.5);
+    expect(doc.nodes[0].gx).toBe(0.25);
     expect(doc.edges).toHaveLength(0);
   });
 });

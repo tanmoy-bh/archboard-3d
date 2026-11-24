@@ -1,5 +1,5 @@
 import type { Store } from "../model/store";
-import { IconKey, ZONE_COLORS, ZONE_MIN, genId, snap } from "../model/types";
+import { IconKey, NODE_SNAP, ZONE_COLORS, ZONE_MIN, genId, snap, snapNode } from "../model/types";
 import { zoneMembers } from "../model/zones";
 import { ICON_NAMES } from "../glyphs/catalog";
 import { SP } from "../scene/constants";
@@ -212,7 +212,7 @@ export class Controller {
     if (this.armed) {
       const g = this.view.groundPoint(e.clientX, e.clientY);
       if (g) {
-        const gx = snap(g.x / SP), gy = snap(g.z / SP);
+        const gx = snapNode(g.x / SP), gy = snapNode(g.z / SP);
         this.view.showGhost(this.armed, gx, gy, this.store.isFree(gx, gy));
       }
       this.updateCursor(false);
@@ -236,7 +236,10 @@ export class Controller {
   private dragNodes(d: Extract<Drag, { kind: "nodes" }>, e: PointerEvent): void {
     const g = this.view.groundPoint(e.clientX, e.clientY);
     if (!g) return;
-    const dgx = snap(g.x / SP - d.startGX), dgy = snap(g.z / SP - d.startGZ);
+    // tiles on their own move in quarter cells; with a zone or text box in the drag everything keeps to half cells
+    const fine = [...d.origins.keys()].every((id) => this.store.node(id));
+    const sn = fine ? snapNode : snap;
+    const dgx = sn(g.x / SP - d.startGX), dgy = sn(g.z / SP - d.startGZ);
     const ids = new Set(d.origins.keys());
     for (const [id, o] of d.origins) {
       // tiles must keep a gap from each other; text boxes and zones may sit anywhere
@@ -355,7 +358,7 @@ export class Controller {
     const icon = this.dragIcon();
     const g = this.view.groundPoint(e.clientX, e.clientY);
     if (icon && g) {
-      const gx = snap(g.x / SP), gy = snap(g.z / SP);
+      const gx = snapNode(g.x / SP), gy = snapNode(g.z / SP);
       this.view.showGhost(icon, gx, gy, this.store.isFree(gx, gy));
     }
   };
@@ -426,7 +429,8 @@ export class Controller {
   };
 
   private nudge(key: string, big: boolean): void {
-    const step = big ? 1 : 0.5;
+    const tilesOnly = [...this.movingOrigins(true).keys()].every((id) => this.store.node(id));
+    const step = big ? 1 : tilesOnly ? NODE_SNAP : 0.5;
     const dx = key === "arrowleft" ? -step : key === "arrowright" ? step : 0;
     const dy = key === "arrowup" ? -step : key === "arrowdown" ? step : 0;
     const ids = new Set(this.movingOrigins(true).keys());
