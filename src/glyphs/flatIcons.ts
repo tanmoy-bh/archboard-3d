@@ -241,6 +241,15 @@ export const ICONS: Record<IconKey, IconFn> = {
     `<path d="M${x - 23} ${y - 16} h14 l4 4 h28 v28 a3 3 0 0 1 -3 3 h-40 a3 3 0 0 1 -3 -3 z" ${st("#d99512", "#7a4b00", 1.7)} stroke-linejoin="round"/>` +
     `<rect x="${x - 17}" y="${y - 12}" width="32" height="14" rx="1" ${st("#fff", "#bfa66a", 1.2)}/>` +
     `<path d="M${x - 23} ${y - 4} h46 v21 a3 3 0 0 1 -3 3 h-40 a3 3 0 0 1 -3 -3 z" ${st("#f6b21c", "#7a4b00", 1.7)} stroke-linejoin="round"/>`,
+  apigw: (x, y) =>
+    `<rect x="${x - 21}" y="${y + 17}" width="42" height="5" rx="2" ${st("#4c1d95", "#2e1065", 1.2)}/>` +
+    [-19, 10].map((o) => `<rect x="${x + o}" y="${y - 14}" width="9" height="32" rx="2.5" ${st("#a855f7", "#4c1d95")}/>`).join("") +
+    `<rect x="${x - 22}" y="${y - 22}" width="44" height="12" rx="3.5" ${st("#9333ea", "#4c1d95")}/>` +
+    `<text x="${x}" y="${y - 13}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#faf5ff" font-family="monospace">API</text>` +
+    `<path d="M${x} ${y + 14} V${y - 2} M${x - 5} ${y + 2} L${x} ${y - 4} L${x + 5} ${y + 2}" fill="none" stroke="#e9d5ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  auth: (x, y) =>
+    `<path d="M${x - 17} ${y - 20} h34 v18 c0 13 -9 20 -17 24 c-8 -4 -17 -11 -17 -24 z" ${st("#22c55e", "#14532d", 1.8)} stroke-linejoin="round"/>` +
+    `<path d="M${x - 8} ${y - 1} l6 6.5 l11 -13" fill="none" stroke="#f0fdf4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`,
 };
 
 /** Full standalone SVG markup for an icon, used for rasterising and for DOM previews. */

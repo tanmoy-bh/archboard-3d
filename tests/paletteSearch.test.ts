@@ -23,6 +23,8 @@ describe("palette search", () => {
     expect(searchComponents("sqs").has("queue")).toBe(true);
     expect(searchComponents("iam").has("identity")).toBe(true);
     expect(searchComponents("k8s").has("cluster")).toBe(true);
+    expect(searchComponents("api gateway").has("apigw")).toBe(true);
+    expect(searchComponents("login").has("auth")).toBe(true);
   });
 
   it("finds every component of a group by the group name", () => {

@@ -63,6 +63,9 @@ describe("icon mapping", () => {
     expect(icon("mxgraph.aws4.glacier")).toBe("archive");
     expect(icon("mxgraph.aws4.efs")).toBe("files");
     expect(icon("mxgraph.aws4.iot_core")).toBe("iot");
+    expect(icon("mxgraph.aws4.api_gateway")).toBe("apigw");
+    expect(icon("", "Authentication service")).toBe("auth");
+    expect(icon("mxgraph.aws4.cognito")).toBe("identity");
     expect(icon("mxgraph.aws4.bedrock")).toBe("llm");
   });
   it("uses the label when the shape says nothing", () => {
@@ -92,7 +95,7 @@ describe("draw.io import", () => {
       arrow("e1", "a", "b", "calls") + arrow("e2", "b", "c", "", "endArrow=classic;dashed=1;") + arrow("e3", "a", "c", "", "startArrow=classic;endArrow=classic;"),
     );
     const { doc, report } = await importDrawio(xml);
-    expect(doc.nodes.map((n) => [n.label, n.icon])).toEqual([["Client", "laptop"], ["API Gateway", "gateway"], ["Orders DB", "db"]]);
+    expect(doc.nodes.map((n) => [n.label, n.icon])).toEqual([["Client", "laptop"], ["API Gateway", "apigw"], ["Orders DB", "db"]]);
     expect(doc.edges).toHaveLength(3);
     expect(doc.edges[0]).toMatchObject({ label: "calls" });
     expect(doc.edges[1].dash).toBe(true);

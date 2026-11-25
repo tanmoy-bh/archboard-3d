@@ -17,13 +17,14 @@ export const ICON_NAMES: Record<IconKey, string> = {
   warehouse: "Data warehouse", alarm: "Monitoring / alarm", key: "Key / secrets", identity: "Identity / IAM",
   firewall: "Firewall / WAF", network: "Virtual network", etl: "Data pipeline / ETL", iot: "IoT device",
   archive: "Archive / backup", files: "File storage",
+  apigw: "API gateway", auth: "Auth / login",
   http: "HTTP", rest: "REST API", websocket: "WebSocket", sse: "Server-sent events", webhook: "Webhook",
 };
 
 /** Palette grouping. Every icon appears exactly once. */
 export const PALETTE_GROUPS: { title: string; icons: IconKey[] }[] = [
   { title: "Clients", icons: ["phone", "laptop", "person", "globe", "apps"] },
-  { title: "Edge", icons: ["cdn", "gateway", "filter", "lock"] },
+  { title: "Edge", icons: ["cdn", "gateway", "apigw", "auth", "filter", "lock"] },
   { title: "Compute", icons: ["svc", "server", "box"] },
   { title: "Data", icons: ["db", "redis", "es", "vector", "blob", "graph", "ring", "doc"] },
   { title: "Messaging", icons: ["queue", "bell", "mail", "sms"] },

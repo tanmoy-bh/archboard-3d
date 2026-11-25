@@ -1000,6 +1000,38 @@ const BUILD: Record<IconKey, () => Glyph3D> = {
     plaque(g, "FILES", "#7a4b00", 0.7, 0, 0.3, 0.215);
     return { group: g, tick: (t) => sheets.forEach((s, i) => { s.position.y = 0.34 + i * 0.03 + Math.sin(t * 1.5 + i) * 0.015; }) };
   },
+
+  /** API gateway: a purple gate with an API sign. Requests slide in through the opening. */
+  apigw() {
+    const g = new THREE.Group();
+    box(g, 1.3, 0.08, 0.7, "#4c1d95", 0, 0, 0, { r: 0.03 });
+    for (const x of [-0.48, 0.48]) box(g, 0.2, 1.0, 0.3, "#a855f7", x, 0.08, 0, { r: 0.05, metal: 0.15 });
+    box(g, 1.18, 0.34, 0.34, "#9333ea", 0, 0.9, 0, { r: 0.06, metal: 0.15 });
+    plaque(g, "API", "#faf5ff", 0.64, 0, 1.07, 0.182);
+    const pulses = [-0.2, 0, 0.2].map((x) => ball(g, 0.075, "#e9d5ff", x, 0.42, 0.3, { emissive: "#c084fc", ei: 0.8 }));
+    return {
+      group: g,
+      tick: (t) => pulses.forEach((p, i) => { const k = (t * 0.7 + i * 0.33) % 1; p.position.z = 0.32 - k * 0.64; p.scale.setScalar(0.55 + Math.sin(k * Math.PI) * 0.6); }),
+    };
+  },
+
+  /** Authentication: a green shield with a check mark. */
+  auth() {
+    const g = new THREE.Group();
+    cyl(g, 0.55, 0.57, 0.05, "#14532d", 0, 0, 0);
+    const s = new THREE.Shape();
+    s.moveTo(-0.46, 1.08); s.lineTo(0.46, 1.08); s.lineTo(0.46, 0.62);
+    s.quadraticCurveTo(0.46, 0.22, 0, 0.1); s.quadraticCurveTo(-0.46, 0.22, -0.46, 0.62); s.closePath();
+    mesh(g, new THREE.ExtrudeGeometry(s, { depth: 0.14, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 3, curveSegments: 14 }), material("#22c55e", { rough: 0.4, metal: 0.15 }), 0, 0, -0.07);
+    const chk = new THREE.Group();
+    chk.position.set(0, 0.65, 0.14);
+    const white = { emissive: "#bbf7d0", ei: 0.5 };
+    between(chk, [-0.2, -0.01, 0], [-0.07, -0.15, 0], 0.055, "#f0fdf4", white);
+    between(chk, [-0.07, -0.15, 0], [0.24, 0.19, 0], 0.055, "#f0fdf4", white);
+    for (const [x, y] of [[-0.2, -0.01], [-0.07, -0.15], [0.24, 0.19]]) ball(chk, 0.055, "#f0fdf4", x, y, 0, white);
+    g.add(chk);
+    return { group: g, tick: (t) => chk.scale.setScalar(1 + Math.sin(t * 3) * 0.07) };
+  },
 };
 
 /**

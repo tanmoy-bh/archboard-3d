@@ -7,6 +7,7 @@ export const ICON_KEYS = [
   "http", "rest", "websocket", "sse", "webhook",
   "llm", "agent", "rag", "embed", "retriever", "prompt", "guard", "tools", "memory", "mcp",
   "lambda", "container", "cluster", "dns", "warehouse", "alarm", "key", "identity", "firewall", "network", "etl", "iot", "archive", "files",
+  "apigw", "auth",
 ] as const;
 
 export type IconKey = (typeof ICON_KEYS)[number];

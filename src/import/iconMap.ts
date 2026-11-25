@@ -34,7 +34,8 @@ export const KEYWORDS: [IconKey, RegExp][] = [
   ["db", /\brds\b|aurora|cloud.?sql|cosmos|dynamo|mysql|postgres|mariadb|oracle|sql.?server|mongo|\bdb\b|database|datastore|firestore|bigtable|spanner|cassandra|couchbase|\bsql\b|nosql|documentdb|datastore/],
   // security
   ["key", /\bkms\b|key.?vault|secrets?.?manager|\bsecrets?\b|\bhsm\b|cloudhsm|\bkeys?\b|certificate|\bacm\b/],
-  ["identity", /\biam\b|cognito|identity|entra|active.?directory|\bad\b|okta|auth0|\bsso\b|oauth|oidc|keycloak|\bauth\b|authentication|authoriz|\bsaml\b|\bldap\b/],
+  ["auth", /authenticat|\bauth\b|auth0|\boauth|oidc|\bsso\b|keycloak|okta|\blogin\b|sign.?in|\bjwt\b|\bmfa\b|passkey/],
+  ["identity", /\biam\b|cognito|identity|entra|active.?directory|\bad\b|authoriz|\bsaml\b|\bldap\b/],
   ["firewall", /\bwaf\b|firewall|shield|cloud.?armor|security.?group|\bnacl\b|\bddos\b/],
   ["lock", /\block\b|lease|mutex|zookeeper|\betcd\b|consul/],
   // networking and edge
@@ -42,7 +43,8 @@ export const KEYWORDS: [IconKey, RegExp][] = [
   ["dns", /route.?53|cloud.?dns|\bdns\b|domain|nameserver/],
   ["cdn", /cloudfront|\bcdn\b|cloud.?cdn|akamai|fastly|front.?door|cloudflare/],
   ["card", /stripe|paypal|razorpay|braintree|adyen|payment.?(provider|processor)|credit.?card/],
-  ["gateway", /api.?gateway|apigateway|\bapim\b|api.?management|\balb\b|\belb\b|\bnlb\b|load.?balanc|\blb\b|gateway|ingress|nginx|haproxy|envoy|reverse.?proxy/],
+  ["apigw", /api.?gateway|apigateway|\bapim\b|api.?management|apigee|\bkong\b/],
+  ["gateway", /\balb\b|\belb\b|\bnlb\b|load.?balanc|\blb\b|gateway|ingress|nginx|haproxy|envoy|reverse.?proxy/],
   ["websocket", /websocket|\bws\b|socket\.io/],
   ["sse", /\bsse\b|server.?sent/],
   ["webhook", /webhook/],
