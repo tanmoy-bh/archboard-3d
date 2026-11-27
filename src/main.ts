@@ -12,6 +12,7 @@ import { h } from "./ui/dom";
 import { Inspector } from "./ui/inspector";
 import { Legend } from "./ui/legend";
 import { openExamples } from "./ui/examples";
+import { ExplanationEditor, ExplanationReader } from "./ui/explanation";
 import { Palette } from "./ui/palette";
 import { openSaved } from "./ui/saved";
 import { openShare } from "./ui/share";
@@ -60,6 +61,8 @@ function boot(): void {
   const store = new Store(loadInitialDoc());
   const stage = h("main", { class: "stage" });
   const boardName = h("div", { class: "board-name" });
+  const explanation = new ExplanationReader();
+  const stageHead = h("div", { class: "stage-head" }, boardName, explanation.button);
   const emptyHint = h("div", { class: "empty" }, h("strong", {}, "An empty board"), h("span", {}, "Pick a component on the left and click the floor, or load the example from the toolbar."));
   const hints = h("div", { class: "hints" }, "Drag to pan · Wheel to zoom · Q / E rotate · R auto-rotates · T switches 2D and 3D · Space + drag also pans");
 
@@ -80,6 +83,7 @@ function boot(): void {
   const legend = new Legend(store);
   const inspector = new Inspector(store);
   const steps = new StepsPanel(store);
+  const notesEditor = new ExplanationEditor(store);
 
   const files = {
     newBoard() {
@@ -227,10 +231,11 @@ function boot(): void {
 
   const toolbar = new Toolbar(store, controller, view, files);
 
-  stage.append(boardName, legend.el, hints, emptyHint);
+  stage.append(stageHead, legend.el, hints, emptyHint, explanation.panel);
   collapsible(inspector.el, "sec:inspector");
   collapsible(steps.el, "sec:steps");
-  const right = h("aside", { class: "sidebar", "aria-label": "Details" }, panelHead("Details", "panel:right", "Show details"), h("div", { class: "panel-body" }, inspector.el, steps.el));
+  collapsible(notesEditor.el, "sec:explanation");
+  const right = h("aside", { class: "sidebar", "aria-label": "Details" }, panelHead("Details", "panel:right", "Show details"), h("div", { class: "panel-body" }, inspector.el, steps.el, notesEditor.el));
   const workspace = h("div", { class: "workspace" }, palette.el, stage, right);
   app.append(toolbar.el, workspace);
   restorePanels(workspace);
@@ -249,6 +254,8 @@ function boot(): void {
     toolbar.refresh(theme.dark, mode);
     inspector.update();
     steps.update();
+    notesEditor.update();
+    explanation.update(store.doc.title, store.doc.notes);
     legend.update(mode, theme.fg);
     emptyHint.hidden = store.itemCount > 0;
     boardName.textContent = store.doc.title.trim() || "Untitled";

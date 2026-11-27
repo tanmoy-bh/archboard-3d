@@ -21,6 +21,16 @@
   .vtitle { right: 12px; top: 64px; }
 }
 
+/* the explanation button sits under the title; the sheet covers the diagram, leaving the title, the controls and the steps in view */
+.vwrap > .explain-open { position: absolute; top: 42px; left: 14px; }
+.vwrap > .explain-open[hidden] { display: none; }
+@media (max-width: 520px) { .vwrap > .explain-open { top: 96px; } }
+@media (min-width: 641px) and (min-height: 501px), (min-width: 641px) and (pointer: fine) {
+  .vwrap > .explain { top: 62px; right: 10px; bottom: 10px; left: 10px; width: auto; height: auto; z-index: 6; border: 1px solid var(--border); border-radius: 12px; }
+  .vwrap > .explain-open[aria-expanded="true"] { visibility: hidden; }
+}
+@media (min-width: 900px) { .vwrap > .vsteps:not([hidden]) ~ .explain { right: 360px; } }
+
 /* the written steps, beside the diagram (a sheet at the bottom on a phone) */
 .vsteps { position: absolute; top: 62px; right: 10px; width: min(340px, calc(100% - 20px)); max-height: calc(100% - 74px); overflow: auto;
   padding: 10px 12px 12px; background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--border); border-radius: 12px; backdrop-filter: blur(6px); font-size: 13px; }

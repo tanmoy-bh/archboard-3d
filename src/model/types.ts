@@ -99,12 +99,15 @@ export interface DocData {
   zones: ZoneData[];
   /** Written step list. Badge N on an arrow refers to steps[N - 1]. */
   steps: string[];
+  /** Long written explanation, see model/notes.ts for its markup. Left out when there is none. */
+  notes?: string;
   /** Id of this board in the saved list on the server. Set by Save so a later Save updates the same one. Older files called it shareId. */
   boardId?: string;
 }
 
 export const isBoardId = (v: unknown): v is string => typeof v === "string" && /^[a-z0-9]{8,32}$/.test(v);
 
+export const NOTES_MAX = 20000;
 export const GRID_SNAP = 0.5;
 /** Tiles snap finer than zones and text, so components can sit close together. */
 export const NODE_SNAP = 0.25;

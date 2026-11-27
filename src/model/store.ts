@@ -245,6 +245,7 @@ export class Store {
       d.texts = next.texts;
       d.zones = next.zones ?? [];
       d.steps = next.steps;
+      if (next.notes) d.notes = next.notes; else delete d.notes;
       if (next.boardId) d.boardId = next.boardId; else delete d.boardId; // a different board does not inherit the old one
       delete (d as { shareId?: string }).shareId;
     });

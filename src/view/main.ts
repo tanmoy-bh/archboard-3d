@@ -8,6 +8,7 @@ import { SceneView } from "../scene/sceneView";
 import { unpackDoc } from "../share/codec";
 import { ViewSource, parseViewParams } from "../share/links";
 import { readTheme } from "../theme";
+import { ExplanationReader } from "../ui/explanation";
 import { h, svg } from "../ui/dom";
 import { UI_ICONS } from "../ui/icons";
 import { sidewaysScroll } from "../interaction/wheel";
@@ -138,6 +139,9 @@ function boot(): void {
           h("ol", {}, ...doc.steps.map((t) => h("li", {}, t))))
       : null;
     const stepsBtn = h("button", { class: "tb", type: "button", title: "Show the steps", "aria-label": "Show the steps", onclick: () => showSteps(stepsPanel?.hidden ?? false) }, svg(UI_ICONS.list));
+    // The longer explanation, when the board has one. It opens over the whole page.
+    const explanation = new ExplanationReader();
+    explanation.update(doc.title, doc.notes);
     const showSteps = (on: boolean) => {
       if (!stepsPanel) return;
       stepsPanel.hidden = !on;
@@ -168,6 +172,7 @@ function boot(): void {
       );
       wrap.append(h("div", { class: "vtitle" }, doc.title), bar);
       if (stepsPanel) wrap.append(stepsPanel);
+      wrap.append(explanation.button, explanation.panel);
     }
     refresh();
     refreshTheme();
