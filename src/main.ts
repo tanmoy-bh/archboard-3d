@@ -59,6 +59,7 @@ function boot(): void {
 
   const store = new Store(loadInitialDoc());
   const stage = h("main", { class: "stage" });
+  const boardName = h("div", { class: "board-name" });
   const emptyHint = h("div", { class: "empty" }, h("strong", {}, "An empty board"), h("span", {}, "Pick a component on the left and click the floor, or load the example from the toolbar."));
   const hints = h("div", { class: "hints" }, "Drag to pan · Wheel to zoom · Q / E rotate · R auto-rotates · T switches 2D and 3D · Space + drag also pans");
 
@@ -226,7 +227,7 @@ function boot(): void {
 
   const toolbar = new Toolbar(store, controller, view, files);
 
-  stage.append(legend.el, hints, emptyHint);
+  stage.append(boardName, legend.el, hints, emptyHint);
   collapsible(inspector.el, "sec:inspector");
   collapsible(steps.el, "sec:steps");
   const right = h("aside", { class: "sidebar", "aria-label": "Details" }, panelHead("Details", "panel:right", "Show details"), h("div", { class: "panel-body" }, inspector.el, steps.el));
@@ -250,6 +251,7 @@ function boot(): void {
     steps.update();
     legend.update(mode, theme.fg);
     emptyHint.hidden = store.itemCount > 0;
+    boardName.textContent = store.doc.title.trim() || "Untitled";
     document.title = `${store.doc.title} · Archboard 3D`;
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
