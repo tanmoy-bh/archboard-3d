@@ -6,7 +6,7 @@ import type { Store } from "../model/store";
 import type { IconKey } from "../model/types";
 import { Theme } from "../theme";
 import { createGifWriter, makePalette } from "../export/gif";
-import { ELEVATION, FRUSTUM_H, HALF, METRICS, PXW, SP, ViewMode, elevationOf, snapAzimuth } from "./constants";
+import { ELEVATION, FRUSTUM_H, HALF, METRICS, PXW, SP, ViewMode, elevationOf, snapAzimuth, zonePickReach } from "./constants";
 import { EdgeView } from "./edgeView";
 import { EdgeSpec, TileSpec, placeLabels } from "./labels";
 import { NODE_PICK_HEIGHT, NodeView } from "./nodeView";
@@ -382,10 +382,11 @@ export class SceneView {
   pickZone(clientX: number, clientY: number): string | null {
     const g = this.groundPoint(clientX, clientY);
     const p = this.ndc(clientX, clientY);
+    const reach = zonePickReach(this.zoom, this.size.y);
     for (const z of [...zonesBigFirst(this.store.doc.zones)].reverse()) {
       const v = this.zones.get(z.id);
       if (!v) continue;
-      if ((g && v.hitBand(g.x, g.z)) || v.hitLabel(this.camera, p.x, p.y)) return z.id;
+      if ((g && v.hitBand(g.x, g.z, reach)) || v.hitLabel(this.camera, p.x, p.y)) return z.id;
     }
     return null;
   }

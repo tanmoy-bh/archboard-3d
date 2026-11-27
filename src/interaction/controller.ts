@@ -5,6 +5,7 @@ import { ICON_NAMES } from "../glyphs/catalog";
 import { SP } from "../scene/constants";
 import type { SceneView } from "../scene/sceneView";
 import { isTypingTarget } from "../ui/dom";
+import { sidewaysScroll } from "./wheel";
 
 export type Tool = "select" | "connect" | "text" | "zone";
 
@@ -178,6 +179,8 @@ export class Controller {
     if (edgeId) {
       if (e.shiftKey) this.store.toggleSelect(edgeId);
       else this.store.select([edgeId]);
+      // an arrow cannot be moved by hand, so a drag that starts on one moves the board
+      this.drag = { kind: "pan", x: e.clientX, y: e.clientY, moved: false, clearOnClick: false };
       return;
     }
     this.drag = { kind: "pan", x: e.clientX, y: e.clientY, moved: false, clearOnClick: !e.shiftKey };
@@ -337,6 +340,11 @@ export class Controller {
 
   private onWheel = (e: WheelEvent): void => {
     e.preventDefault();
+    const across = sidewaysScroll(e);
+    if (across) {
+      this.view.panScreen(e.clientX, e.clientY, e.clientX - across, e.clientY);
+      return;
+    }
     const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016));
     this.view.zoomAt(e.clientX, e.clientY, factor);
   };

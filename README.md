@@ -68,7 +68,7 @@ Needs a browser with WebGL.
 | Edit | Select a tile, arrow or text box. The right panel edits name, type, position, arrow label, step badge, key path, dashed. Double click renames. |
 | Steps | Write the story in "How it works" (one line per step). Number arrows with step badges. A warning shows if a badge has no line. |
 | 2D or 3D | Click the 3D / 2D switch in the toolbar, or press `T`. 3D is the isometric board with 3D models. 2D is a flat top-down board with the 2D glyphs. The camera glides between them, rotating 45 degrees and back, and your choice is remembered. |
-| Look around | Drag empty floor, or right/middle drag, or Space+drag to pan. Wheel zooms. `Q` / `E` rotate the view. `F` fits the board. |
+| Look around | Drag empty floor or an arrow, or right/middle drag, or Space+drag to pan. Wheel zooms. A side scroll (tilt or thumb wheel, a sideways swipe, or Shift with the wheel) moves the board left and right. `Q` / `E` rotate the view. `F` fits the board. |
 | Undo | Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z to redo. One drag or one burst of typing is one step. |
 | Duplicate / delete | Cmd/Ctrl+D, Delete. Deleting a tile removes its arrows. |
 | Examples | The **Example** button opens a menu of finished boards that ship with the app (`public/diagrams/`): ticketing, layers imported from draw.io, a serverless order pipeline and a RAG assistant. Picking one replaces the board, and Undo brings yours back. |

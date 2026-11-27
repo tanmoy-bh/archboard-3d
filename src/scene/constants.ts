@@ -9,6 +9,16 @@ export const EDGE_Y = 0.07;
 export const PXW = 0.0185;
 /** Visible world height at zoom 1. */
 export const FRUSTUM_H = 16;
+/** The widest a zone's outline can be grabbed, in cells to each side. This applies when zoomed far out. */
+export const ZONE_PICK_BAND = 0.3;
+/** How close the pointer must be to a zone's outline to grab it, in screen pixels to each side. */
+export const ZONE_PICK_PX = 10;
+/**
+ * The grab distance around a zone's outline, in world units. It is a fixed distance on screen, so zooming
+ * in never turns the outline into a wide invisible strip that swallows drags meant to move the board.
+ */
+export const zonePickReach = (zoom: number, viewHeightPx: number): number =>
+  Math.min(ZONE_PICK_BAND * SP, (ZONE_PICK_PX * FRUSTUM_H) / (viewHeightPx * zoom));
 /** Camera tilt above the ground: the classic isometric angle. */
 export const ELEVATION = Math.atan(1 / Math.SQRT2);
 /** Screen-space gap between a tile's centre and the top of its name label, in world units. */

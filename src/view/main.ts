@@ -10,6 +10,7 @@ import { ViewSource, parseViewParams } from "../share/links";
 import { readTheme } from "../theme";
 import { h, svg } from "../ui/dom";
 import { UI_ICONS } from "../ui/icons";
+import { sidewaysScroll } from "../interaction/wheel";
 
 /** Fetch a board by the way the link names it. Errors carry a sentence meant to be shown. */
 async function load(source: ViewSource): Promise<DocData> {
@@ -218,6 +219,8 @@ function boot(): void {
       const zoomKey = e.ctrlKey || e.metaKey;
       if (!zoomKey && !top) return; // let the host page scroll
       e.preventDefault();
+      const across = sidewaysScroll(e);
+      if (across) { view.panScreen(e.clientX, e.clientY, e.clientX - across, e.clientY); return; }
       view.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (zoomKey ? 0.01 : 0.0016)));
     }, { passive: false });
     window.addEventListener("keydown", (e) => {

@@ -9,8 +9,6 @@ import type { Ctx } from "./textures";
 const FLOOR_Y = 0.004;
 const OUTLINE_Y = 0.006;
 const HANDLE = 0.34; // world units
-/** How close to the outline (in cells) a click counts as picking the zone. */
-export const ZONE_PICK_BAND = 0.3;
 
 /** Corner index: bit 0 is the right side, bit 1 is the far (larger row) side. */
 export type Corner = 0 | 1 | 2 | 3;
@@ -180,8 +178,8 @@ export class ZoneView {
   }
 
   /** Is the ground point on the zone's outline band? */
-  hitBand(x: number, z: number): boolean {
-    return this.signedDistance(x, z).toEdge <= ZONE_PICK_BAND * SP;
+  hitBand(x: number, z: number, reach: number): boolean {
+    return this.signedDistance(x, z).toEdge <= reach;
   }
 
   /** Is the pointer (normalised device coordinates) on the zone's name? */
