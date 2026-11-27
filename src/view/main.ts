@@ -9,6 +9,7 @@ import { unpackDoc } from "../share/codec";
 import { ViewSource, parseViewParams } from "../share/links";
 import { readTheme } from "../theme";
 import { ExplanationReader } from "../ui/explanation";
+import { FullBoard } from "../ui/fullBoard";
 import { h, svg } from "../ui/dom";
 import { UI_ICONS } from "../ui/icons";
 import { sidewaysScroll } from "../interaction/wheel";
@@ -121,8 +122,12 @@ function boot(): void {
       bigBtn.title = label;
       bigBtn.setAttribute("aria-label", label);
     };
+    // A phone on a page of its own gets the whole screen in landscape, which plain full screen cannot do on every phone.
+    const phone = window.matchMedia("(pointer: coarse)").matches || innerWidth <= 640;
+    const fullBoard = phone && !embedded ? new FullBoard(stage, view) : null;
     const bigger = () => {
       if (embedded) { window.open(fullPageUrl(), "_blank", "noopener"); return; }
+      if (fullBoard) { fullBoard.enter(); return; }
       if (isFull()) void document.exitFullscreen();
       else if (canFullscreen) void document.documentElement.requestFullscreen().catch(() => { /* the browser said no: the page already fills the window */ });
     };
@@ -168,7 +173,7 @@ function boot(): void {
         h("span", { class: "sep", role: "separator" }),
         extra(themeBtn),
         stepsPanel ? stepsBtn : null,
-        canFullscreen || embedded ? bigBtn : null,
+        canFullscreen || embedded || fullBoard ? bigBtn : null,
       );
       wrap.append(h("div", { class: "vtitle" }, doc.title), bar);
       if (stepsPanel) wrap.append(stepsPanel);

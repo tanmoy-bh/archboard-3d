@@ -71,9 +71,18 @@ function syncPanel(workspace: HTMLElement, btn: HTMLElement, id: string, title: 
   btn.setAttribute("aria-label", text);
 }
 
+/** On a phone the component list starts folded, whatever was remembered, so the board gets the width. */
+const PHONE = "(max-width: 640px)";
+
 /** Apply the remembered folded state once the panels are in the page. */
 export function restorePanels(workspace: HTMLElement): void {
   for (const btn of workspace.querySelectorAll<HTMLElement>(".panel-toggle")) {
     syncPanel(workspace, btn, btn.dataset.panel ?? "", btn.dataset.title ?? "", btn.dataset.showLabel ?? "Show panel");
+    if (btn.dataset.panel === "panel:left" && window.matchMedia(PHONE).matches) {
+      workspace.classList.add(PANEL_CLASS["panel:left"]);
+      btn.setAttribute("aria-expanded", "false");
+      btn.title = btn.dataset.showLabel ?? "Show panel";
+      btn.setAttribute("aria-label", btn.title);
+    }
   }
 }

@@ -10,6 +10,20 @@ import { sidewaysScroll } from "./wheel";
 export type Tool = "select" | "connect" | "text" | "zone";
 
 const DRAG_THRESHOLD = 4;
+/** A finger wobbles more than a mouse: it must travel this far before a tap becomes a drag. */
+const TOUCH_SLOP = 8;
+
+type Point = { x: number; y: number };
+
+/**
+ * What the fingers on the board are doing. "pending" may still be a tap, "edit" is dragging something on the
+ * board, "pan" moves the view, "pinch" zooms it, and "after" is the finger left over from a pinch, which only
+ * moves the view until every finger is up.
+ */
+type Gesture =
+  | { phase: "pending"; down: PointerEvent; edits: boolean }
+  | { phase: "edit" | "pan" | "after" }
+  | { phase: "pinch"; spread: number };
 
 type Drag =
   | { kind: "none" }
@@ -27,11 +41,15 @@ export class Controller {
   /** Notifies the UI about tool or armed changes. */
   onModeChange: () => void = () => {};
   onFocusLabel: () => void = () => {};
+  /** Look only: pointers and keys move the view and never change the board. Used by the full screen view. */
+  viewOnly = false;
   /** Called when the user presses T to switch between the 3D and 2D board. */
   onToggleMode: () => void = () => {};
   onToggleAutoRotate: () => void = () => {};
 
   private drag: Drag = { kind: "none" };
+  private touches = new Map<number, Point>();
+  private gesture: Gesture | null = null;
   private connectFrom: string | null = null;
   private spaceDown = false;
   /** A new text box was just placed: move the keyboard focus to its text field once the click is over. */
@@ -43,7 +61,7 @@ export class Controller {
     c.addEventListener("pointerdown", this.onDown);
     c.addEventListener("pointermove", this.onMove);
     c.addEventListener("pointerup", this.onUp);
-    c.addEventListener("pointercancel", this.onUp);
+    c.addEventListener("pointercancel", this.onCancel);
     c.addEventListener("pointerleave", this.onLeave);
     c.addEventListener("wheel", this.onWheel, { passive: false });
     c.addEventListener("dblclick", this.onDouble);
@@ -94,9 +112,144 @@ export class Controller {
   // ---------------------------------------------------------------- pointer
 
   private onDown = (e: PointerEvent): void => {
-    this.view.canvas.setPointerCapture(e.pointerId);
+    this.capture(e.pointerId);
     this.view.holdRotation(true); // auto-rotate waits while the pointer is down
+    if (e.pointerType === "touch") this.touchDown(e);
+    else this.press(e);
+  };
+
+  private onMove = (e: PointerEvent): void => {
+    if (e.pointerType === "touch") this.touchMove(e);
+    else this.move(e);
+  };
+
+  private onUp = (e: PointerEvent): void => {
+    if (e.pointerType === "touch") this.touchEnd(e, false);
+    else this.release(e);
+  };
+
+  private onCancel = (e: PointerEvent): void => {
+    if (e.pointerType === "touch") this.touchEnd(e, true);
+    else this.release(e);
+  };
+
+  private capture(id: number): void {
+    try { this.view.canvas.setPointerCapture(id); } catch { /* the pointer is already gone */ }
+  }
+
+  // ------------------------------------------------------------------ touch
+
+  /**
+   * One finger moves the board unless it starts on something already selected, so reaching for a zoom never
+   * drags a component. A tap does what a click does. A second finger turns the gesture into a pinch and takes
+   * back whatever the first one had started.
+   */
+  private touchDown(e: PointerEvent): void {
+    const first = this.touches.size === 0;
+    this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (first) {
+      this.last = { x: e.clientX, y: e.clientY };
+      // keep a copy: the event is replayed once we know whether this is a tap or a drag
+      const down = { pointerId: e.pointerId, pointerType: "touch", button: 0, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, altKey: e.altKey } as PointerEvent;
+      this.gesture = { phase: "pending", down, edits: this.touchWouldEdit(e) };
+    } else if (this.touches.size === 2) {
+      this.abort();
+      this.startPinch();
+    }
+  }
+
+  /** Would a drag starting here change the board? Only on a selected item, or with the zone tool in hand. */
+  private touchWouldEdit(e: PointerEvent): boolean {
+    if (this.viewOnly || this.armed) return false;
+    if (this.tool === "zone") return true;
+    if (this.tool !== "select") return false;
+    const sel = this.store.selection;
+    if (sel.size === 1) {
+      const [only] = [...sel];
+      if (this.store.zone(only) && this.view.pickZoneCorner(only, e.clientX, e.clientY) !== null) return true;
+    }
+    const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY)
+      ?? (this.view.pickEdge(e.clientX, e.clientY) ? null : this.view.pickZone(e.clientX, e.clientY));
+    return !!id && sel.has(id);
+  }
+
+  private pair(): { mid: Point; spread: number } {
+    const [a, b] = [...this.touches.values()];
+    return { mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, spread: Math.hypot(a.x - b.x, a.y - b.y) };
+  }
+
+  private startPinch(): void {
+    const { mid, spread } = this.pair();
+    this.gesture = { phase: "pinch", spread };
+    this.last = mid;
+  }
+
+  private touchMove(e: PointerEvent): void {
+    const g = this.gesture;
+    if (!g || !this.touches.has(e.pointerId)) return;
+    const at = { x: e.clientX, y: e.clientY };
+    this.touches.set(e.pointerId, at);
+
+    if (g.phase === "pinch") {
+      const { mid, spread } = this.pair();
+      if (g.spread > 0 && spread > 0) this.view.zoomAt(mid.x, mid.y, spread / g.spread);
+      this.view.panScreen(this.last.x, this.last.y, mid.x, mid.y);
+      g.spread = spread;
+      this.last = mid;
+      return;
+    }
+    if (g.phase === "pending") {
+      if (Math.hypot(at.x - g.down.clientX, at.y - g.down.clientY) <= TOUCH_SLOP) return;
+      if (g.edits) {
+        this.gesture = { phase: "edit" };
+        this.press(g.down);
+        this.move(e);
+        return;
+      }
+      this.gesture = { phase: "pan" };
+    } else if (g.phase === "edit") {
+      this.move(e);
+      return;
+    }
+    this.view.panScreen(this.last.x, this.last.y, at.x, at.y);
+    this.last = at;
+  }
+
+  private touchEnd(e: PointerEvent, cancelled: boolean): void {
+    const g = this.gesture;
+    if (!g || !this.touches.delete(e.pointerId)) return;
+    if (this.touches.size >= 2) { if (g.phase === "pinch") this.startPinch(); return; }
+    if (this.touches.size === 1) {
+      if (g.phase === "pinch") {
+        const [rest] = [...this.touches.values()];
+        this.gesture = { phase: "after" };
+        this.last = { ...rest };
+      }
+      return;
+    }
+    this.gesture = null;
+    if (g.phase === "pending" && !cancelled && !this.viewOnly) { this.press(g.down); this.release(e); }
+    else if (g.phase === "edit") { if (cancelled) this.abort(); else this.release(e); }
+    this.view.holdRotation(false);
+  }
+
+  /** Drop the drag in progress and take back anything it had changed. */
+  private abort(): void {
+    const d = this.drag;
+    this.drag = { kind: "none" };
+    this.focusOnUp = false;
+    if (d.kind === "nodes" || d.kind === "zone-draw" || d.kind === "zone-resize") this.store.endTransient(false);
+  }
+
+  // ------------------------------------------------------------ press, move, release
+
+  private press(e: PointerEvent): void {
     this.last = { x: e.clientX, y: e.clientY };
+
+    if (this.viewOnly) {
+      this.drag = { kind: "pan", x: e.clientX, y: e.clientY, moved: false, clearOnClick: false };
+      return;
+    }
 
     if (e.button === 1 || e.button === 2 || this.spaceDown) {
       this.drag = { kind: "pan", x: e.clientX, y: e.clientY, moved: false, clearOnClick: false };
@@ -145,6 +298,7 @@ export class Controller {
       const corner = z ? this.view.pickZoneCorner(only, e.clientX, e.clientY) : null;
       if (z && corner !== null) {
         const right = corner & 1, far = corner >> 1;
+        this.store.beginTransient();
         this.drag = { kind: "zone-resize", id: only, corner, fixedX: right ? z.gx : z.gx + z.w, fixedY: far ? z.gy : z.gy + z.h, moved: false, x: e.clientX, y: e.clientY };
         return;
       }
@@ -187,7 +341,7 @@ export class Controller {
     this.updateCursor(false);
   };
 
-  private onMove = (e: PointerEvent): void => {
+  private move(e: PointerEvent): void {
     const d = this.drag;
     if (d.kind === "pan") {
       if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > DRAG_THRESHOLD) d.moved = true;
@@ -234,7 +388,7 @@ export class Controller {
       const g = this.view.groundPoint(e.clientX, e.clientY);
       if (from && g) this.view.showRubber({ x: from.gx * SP, z: from.gy * SP }, g);
     }
-  };
+  }
 
   private dragNodes(d: Extract<Drag, { kind: "nodes" }>, e: PointerEvent): void {
     const g = this.view.groundPoint(e.clientX, e.clientY);
@@ -289,7 +443,7 @@ export class Controller {
     });
   }
 
-  private onUp = (e: PointerEvent): void => {
+  private release(e: PointerEvent): void {
     const d = this.drag;
     this.drag = { kind: "none" };
     this.view.holdRotation(false);
@@ -331,7 +485,7 @@ export class Controller {
       this.onFocusLabel();
     }
     this.updateCursor(false);
-  };
+  }
 
   private onLeave = (): void => {
     this.view.setHover(null, null);
@@ -350,7 +504,7 @@ export class Controller {
   };
 
   private onDouble = (e: MouseEvent): void => {
-    if (this.tool !== "select") return;
+    if (this.viewOnly || this.tool !== "select") return;
     const id = this.view.pickText(e.clientX, e.clientY) ?? this.view.pickNode(e.clientX, e.clientY) ?? this.view.pickZone(e.clientX, e.clientY);
     if (id) { this.store.select([id]); this.onFocusLabel(); return; }
     const edge = this.view.pickEdge(e.clientX, e.clientY);
@@ -376,6 +530,7 @@ export class Controller {
   private dragIcon(): IconKey | null { return this.draggingIcon; }
 
   private onDrop = (e: DragEvent): void => {
+    if (this.viewOnly) return;
     const key = e.dataTransfer?.getData("application/x-archboard-icon") as IconKey | undefined;
     this.view.showGhost(null);
     if (!key) return;
@@ -404,6 +559,8 @@ export class Controller {
     }
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
+
+    if (this.viewOnly && !["q", "e", "f", "=", "+", "-", "_"].includes(key)) return;
 
     if (e.code === "Space") { this.spaceDown = true; e.preventDefault(); return; }
     if (mod && key === "z") { e.preventDefault(); e.shiftKey ? this.store.redo() : this.store.undo(); return; }

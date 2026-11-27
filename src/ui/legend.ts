@@ -9,8 +9,8 @@ import { h } from "./dom";
 export class Legend {
   readonly el: HTMLElement;
   private key = "";
-  /** Starts collapsed on short screens so it never covers the board. */
-  private collapsed = window.innerHeight < 760;
+  /** Starts collapsed on short or narrow screens so it never covers the board. */
+  private collapsed = window.innerHeight < 760 || window.innerWidth <= 960;
 
   constructor(private store: Store) {
     this.el = h("aside", { class: "legend", "aria-label": "Legend" });

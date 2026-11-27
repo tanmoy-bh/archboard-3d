@@ -13,6 +13,7 @@ import { Inspector } from "./ui/inspector";
 import { Legend } from "./ui/legend";
 import { openExamples } from "./ui/examples";
 import { ExplanationEditor, ExplanationReader } from "./ui/explanation";
+import { FullBoard } from "./ui/fullBoard";
 import { Palette } from "./ui/palette";
 import { openSaved } from "./ui/saved";
 import { openShare } from "./ui/share";
@@ -62,7 +63,8 @@ function boot(): void {
   const stage = h("main", { class: "stage" });
   const boardName = h("div", { class: "board-name" });
   const explanation = new ExplanationReader();
-  const stageHead = h("div", { class: "stage-head" }, boardName, explanation.button);
+  const stageActions = h("div", { class: "stage-actions" }, explanation.button);
+  const stageHead = h("div", { class: "stage-head" }, boardName, stageActions);
   const emptyHint = h("div", { class: "empty" }, h("strong", {}, "An empty board"), h("span", {}, "Pick a component on the left and click the floor, or load the example from the toolbar."));
   const hints = h("div", { class: "hints" }, "Drag to pan · Wheel to zoom · Q / E rotate · R auto-rotates · T switches 2D and 3D · Space + drag also pans");
 
@@ -230,6 +232,17 @@ function boot(): void {
   };
 
   const toolbar = new Toolbar(store, controller, view, files);
+
+  // On a phone: the whole board on the whole screen, to look at. Nothing can be moved there by accident.
+  const fullBoard = new FullBoard(stage, view, (on) => {
+    if (on) {
+      explanation.setOpen(false);
+      controller.setTool("select");
+      store.clearSelection();
+    }
+    controller.viewOnly = on;
+  });
+  stageActions.append(fullBoard.button);
 
   stage.append(stageHead, legend.el, hints, emptyHint, explanation.panel);
   collapsible(inspector.el, "sec:inspector");

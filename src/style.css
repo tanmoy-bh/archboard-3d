@@ -96,6 +96,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .stage-head { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
 .board-name { max-width: 100%; padding: 6px 12px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--panel) 92%, transparent); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; pointer-events: none; }
 /* The written explanation: its button, and a sheet of frosted glass over the canvas. The text sits in a centred column. */
+.stage-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .explain-open { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--step); border-radius: 10px; background: var(--panel); color: var(--step); font-weight: 600; cursor: pointer; pointer-events: auto; }
 .explain-open[hidden], .explain-nav[hidden] { display: none; }
 .explain { --gutter: max(20px, calc((100% - 780px) / 2)); position: absolute; inset: 0; z-index: 5; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; overflow: hidden; color: var(--fg);
@@ -120,6 +121,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (max-width: 640px), (max-height: 500px) and (pointer: coarse) { .explain { position: fixed; z-index: 40; height: 100dvh; } }
 @media (max-width: 520px) { .explain-nav { flex-wrap: nowrap; overflow-x: auto; } .explain-nav button { flex: none; } .explain-head { padding-top: 14px; } .explain-head strong { font-size: 19px; } .explain-body { font-size: 16px; } }
 @media (prefers-reduced-transparency: reduce) { .explain { background: var(--panel); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+/* The full screen board for phones: its button, and the sheet that holds the canvas. */
+.fullboard-open { display: none; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--panel); color: var(--accent); font-weight: 600; cursor: pointer; pointer-events: auto; }
+@media (max-width: 960px), (pointer: coarse) { .fullboard-open { display: inline-flex; } }
+.fullboard { position: fixed !important; top: 0 !important; left: 0 !important; right: auto !important; bottom: auto !important; z-index: 45; width: 100vw !important; height: 100vh !important; height: 100dvh !important; background: var(--board); }
+/* Held upright: turned a quarter turn clockwise, so the long side of the screen is the board's width. */
+.fullboard.turned { left: 100vw !important; width: 100vh !important; width: 100dvh !important; height: 100vw !important; transform: rotate(90deg); transform-origin: 0 0; }
+.fullboard > :not(canvas):not(.fullboard-bar) { display: none !important; }
+.fullboard-bar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+.fullboard-bar .tb { width: 44px; height: 44px; justify-content: center; border-color: var(--border); background: color-mix(in srgb, var(--panel) 82%, transparent); }
 .legend { position: absolute; left: 12px; bottom: 12px; max-height: 60%; overflow: auto; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(6px); font-size: 12.5px; }
 .legend[hidden] { display: none; }
 .legend-toggle { display: flex; width: 100%; justify-content: space-between; gap: 18px; padding: 0; border: 0; background: none; cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
@@ -169,6 +179,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .workspace.pal-collapsed { --pal-w: 38px; }
   .palette-grid { grid-template-columns: 1fr 1fr; }
   .sidebar { display: none; }
+}
+/* A phone: the toolbar is one row that swipes sideways, so the board keeps the height. */
+@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
+  .toolbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .toolbar > * { flex: none; }
+  .toolbar .grow, .brand strong { display: none; }
+  .board-name { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .toast { transition: none; }

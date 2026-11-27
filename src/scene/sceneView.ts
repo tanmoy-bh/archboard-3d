@@ -13,6 +13,7 @@ import { NODE_PICK_HEIGHT, NodeView } from "./nodeView";
 import { Rect, labelAnchor, routeAll } from "./routing";
 import { Ctx, TextureFactory } from "./textures";
 import { TextView } from "./textView";
+import { canvasFraction } from "./turned";
 import { Corner, ZoneView } from "./zoneView";
 import { zonesBigFirst } from "../model/zones";
 import { ZoneLabelSpec, placeZoneLabels } from "./zoneLabels";
@@ -26,6 +27,8 @@ const AUTO_ROTATE_SPEED = 0.15;
 
 export class SceneView {
   readonly canvas: HTMLCanvasElement;
+  /** The page shows the canvas turned a quarter turn clockwise (see ui/fullBoard.ts), so pointing has to follow. */
+  turned = false;
 
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -333,7 +336,8 @@ export class SceneView {
 
   private ndc(clientX: number, clientY: number): THREE.Vector2 {
     const r = this.canvas.getBoundingClientRect();
-    return new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    const { u, v } = canvasFraction(r, clientX, clientY, this.turned);
+    return new THREE.Vector2(u * 2 - 1, -v * 2 + 1);
   }
 
   /** Point on the ground plane under a screen position. */
