@@ -1,6 +1,7 @@
 import { ICON_NAMES, PALETTE_GROUPS } from "../glyphs/catalog";
 import { searchComponents } from "../glyphs/search";
-import { glyphImage } from "../glyphs/thumbs";
+import { glyphImage, loadToolThumbnails } from "../glyphs/thumbs";
+import { isBrandKey } from "../model/brandKeys";
 import type { Controller } from "../interaction/controller";
 import type { IconKey } from "../model/types";
 import type { ViewMode } from "../scene/constants";
@@ -72,6 +73,13 @@ export class Palette {
     }
     this.filter();
     this.refresh();
+    if (mode === "3d") void loadToolThumbnails().then(() => {
+      if (this.key !== key) return; // the view changed while the logos loaded
+      for (const [icon, b] of this.buttons) {
+        const src = isBrandKey(icon) ? glyphImage(icon, mode, fg) : undefined;
+        if (src) b.querySelector("img")?.setAttribute("src", src);
+      }
+    });
   }
 
   /** Show only the components that match the search box. Matching groups open up while a search is active. */

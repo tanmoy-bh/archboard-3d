@@ -1,6 +1,7 @@
-import { ICON_NAMES } from "../glyphs/catalog";
+import { ICON_NAMES, PALETTE_GROUPS } from "../glyphs/catalog";
+import { BRAND_GROUPS, BrandKey, isBrandKey } from "../model/brandKeys";
 import type { Store } from "../model/store";
-import { ICON_KEYS, IconKey, TEXT_MAX_LENGTH, TEXT_SIZES, TEXT_SIZE_NAMES, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, isHexColor, isIconKey, isTextSize, snap, snapNode } from "../model/types";
+import { ALSO_MAX, IconKey, TEXT_MAX_LENGTH, TEXT_SIZES, TEXT_SIZE_NAMES, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, cleanAlso, isHexColor, isIconKey, isTextSize, snap, snapNode } from "../model/types";
 import { h, svg } from "./dom";
 import { UI_ICONS } from "./icons";
 
@@ -31,7 +32,9 @@ export class Inspector {
   private signatureNow(): string {
     const sel = [...this.store.selection].sort();
     const kind = sel.length === 1 ? (this.store.node(sel[0]) ? "n" : this.store.edge(sel[0]) ? "e" : this.store.textBox(sel[0]) ? "t" : this.store.zone(sel[0]) ? "z" : "x") : "";
-    return `${sel.join(",")}|${kind}`;
+    const node = kind === "n" ? this.store.node(sel[0]) : undefined;
+    // a component is drawn again when its logos change, because the fields below the type depend on them
+    return `${sel.join(",")}|${kind}|${node ? [node.icon, ...(node.also ?? [])].join() : ""}`;
   }
 
   private render(): void {
@@ -139,12 +142,18 @@ export class Inspector {
     this.focusTarget = label;
 
     const type = h("select", {});
-    for (const k of ICON_KEYS) type.append(h("option", { value: k }, ICON_NAMES[k]));
+    for (const g of PALETTE_GROUPS) type.append(h("optgroup", { label: g.title }, ...g.icons.map((k) => h("option", { value: k }, ICON_NAMES[k]))));
     type.value = node().icon;
     type.addEventListener("change", () => {
       if (!isIconKey(type.value)) return;
       const icon: IconKey = type.value;
-      this.store.mutate((d) => { const n = d.nodes.find((x) => x.id === id); if (n) n.icon = icon; });
+      this.store.mutate((d) => {
+        const n = d.nodes.find((x) => x.id === id);
+        if (!n) return;
+        n.icon = icon;
+        const also = cleanAlso(icon, n.also);
+        if (also.length) n.also = also; else delete n.also;
+      });
     });
     this.refreshers.push(() => { type.value = node().icon; });
 
@@ -160,6 +169,7 @@ export class Inspector {
     this.body.append(
       this.field("Name", label),
       this.field("Type", type),
+      ...(isBrandKey(node().icon) ? [this.moreLogos(id)] : []),
       h("div", { class: "row2" },
         this.field("Column", this.number(() => node().gx, move("gx"), 0.5)),
         this.field("Row", this.number(() => node().gy, move("gy"), 0.5))),
@@ -167,6 +177,25 @@ export class Inspector {
       this.action("sparkle", "Duplicate", () => this.store.duplicateSelected()),
       this.action("trash", "Delete", () => this.store.deleteSelected(), true),
     );
+  }
+
+  /** A box can show several tools: the logos besides the main one, each removable, and a list to add more. */
+  private moreLogos(id: string): HTMLElement {
+    const node = this.store.node(id)!;
+    const also = node.also ?? [];
+    const set = (next: BrandKey[]) => this.store.mutate((d) => {
+      const n = d.nodes.find((x) => x.id === id);
+      if (!n) return;
+      const clean = cleanAlso(n.icon, next);
+      if (clean.length) n.also = clean; else delete n.also;
+    });
+    const chips = also.map((k) => h("button", { class: "btn logo-chip", type: "button", title: `Remove ${ICON_NAMES[k]}`, "aria-label": `Remove ${ICON_NAMES[k]}`, onclick: () => set(also.filter((x) => x !== k)) }, h("span", {}, ICON_NAMES[k]), svg(UI_ICONS.close)));
+    const add = h("select", {}, h("option", { value: "" }, "Add a logo…"),
+      ...BRAND_GROUPS.map((g) => h("optgroup", { label: g.title }, ...g.icons.filter((k) => k !== node.icon && !also.includes(k)).map((k) => h("option", { value: k }, ICON_NAMES[k])))));
+    add.addEventListener("change", () => { if (isBrandKey(add.value)) set([...also, add.value]); });
+    return h("div", { class: "more-logos" },
+      chips.length ? h("div", { class: "logo-chips" }, ...chips) : null,
+      also.length < ALSO_MAX ? this.field("More logos in this box", add) : null);
   }
 
   private renderText(id: string): void {

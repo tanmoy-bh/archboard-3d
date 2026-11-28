@@ -1,3 +1,4 @@
+import { BRAND_KEYS, BRAND_NAMES, BrandKey } from "../model/brandKeys";
 import type { IconKey } from "../model/types";
 
 /**
@@ -83,6 +84,35 @@ export const KEYWORDS: [IconKey, RegExp][] = [
   ["svc", /microservice|service|\bapi\b|backend|\bbff\b|\bworker\b|handler|\bapp\b|\bjob\b|controller|manager|engine/],
 ];
 
+/** Lower case words only, so "Amazon S3" and "amazon s3" compare equal. */
+const words = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** A label that is nothing but a tool's name gets that tool's logo. */
+const TOOL_LABELS = new Map<string, BrandKey>([
+  ...BRAND_KEYS.map((k): [string, BrandKey] => [words(BRAND_NAMES[k]), k]),
+  ["postgres", "postgresql"], ["kafka", "kafka"], ["airflow", "airflow"], ["lambda", "aws-lambda"], ["bedrock", "aws-bedrock"],
+  ["secrets manager", "aws-secrets-manager"], ["argocd", "argo"], ["github copilot", "copilot"], ["open code", "opencode"],
+]);
+
+/** AWS stencil names as draw.io writes them (underscores already turned into spaces), mapped to the service's own logo. */
+const AWS_STENCILS: [BrandKey, string][] = ([
+  ["aws-lambda", "lambda|lambda function"], ["aws-ec2", "ec2"], ["aws-ecs", "ecs|elastic container service"], ["aws-eks", "eks"], ["aws-fargate", "fargate"],
+  ["aws-s3", "s3|simple storage service"], ["aws-glacier", "glacier"], ["aws-rds", "rds"], ["aws-aurora", "aurora"], ["aws-dynamodb", "dynamodb"],
+  ["aws-elasticache", "elasticache"], ["aws-redshift", "redshift"], ["aws-athena", "athena"], ["aws-glue", "glue"], ["aws-neptune", "neptune"],
+  ["aws-sqs", "sqs"], ["aws-sns", "sns|simple notification service"], ["aws-ses", "ses|simple email service"], ["aws-kinesis", "kinesis"], ["aws-eventbridge", "eventbridge"],
+  ["aws-step-functions", "step functions"], ["aws-api-gateway", "api gateway"], ["aws-cloudfront", "cloudfront"], ["aws-route53", "route 53"],
+  ["aws-elb", "elastic load balancing|application load balancer|network load balancer"], ["aws-vpc", "vpc"], ["aws-waf", "waf"], ["aws-iam", "iam|identity and access management"],
+  ["aws-cognito", "cognito"], ["aws-kms", "kms|key management service"], ["aws-secrets-manager", "secrets manager"], ["aws-bedrock", "bedrock"],
+  ["aws-cloudwatch", "cloudwatch"], ["aws-cloudtrail", "cloudtrail"], ["aws-cloudformation", "cloudformation"],
+] as [BrandKey, string][]);
+
+const AWS_RULES: [BrandKey, RegExp][] = AWS_STENCILS.map(([k, names]) => [k, new RegExp(`aws4?\\.(${names})(?![a-z0-9])`)]);
+
+/** The tool this shape is, if it clearly is one: an AWS stencil, or a label that is only the tool's name. */
+function toolFor(shapes: string, label: string): BrandKey | undefined {
+  return AWS_RULES.find(([, re]) => re.test(shapes))?.[0] ?? TOOL_LABELS.get(words(label));
+}
+
 /** Generic draw.io shapes with a clear meaning, used when neither the stencil name nor the label matched. */
 const SHAPES: [RegExp, IconKey][] = [
   [/cylinder|flowchart\.(database|stored_data)/, "db"],
@@ -102,10 +132,12 @@ export interface IconGuess { icon: IconKey; /** True when nothing matched and th
  * Pick the component for a shape. `shapeNames` are the stencil words from the style (shape, resIcon, image
  * names), `label` is the visible text.
  *
- * Order: 1. stencil names, 2. label keywords, 3. generic shapes, 4. Service (reported as a guess).
+ * Order: 0. a tool with its own logo, 1. stencil names, 2. label keywords, 3. generic shapes, 4. Service (reported as a guess).
  */
 export function mapIcon(shapeNames: string, label: string): IconGuess {
   const s = shapeNames.toLowerCase().replace(/_/g, " "), l = label.toLowerCase().replace(/_/g, " ").trim();
+  const tool = toolFor(s, l);
+  if (tool) return { icon: tool, guessed: false };
   for (const [icon, re] of KEYWORDS) if (s && re.test(s)) return { icon, guessed: false };
   for (const [icon, re] of KEYWORDS) if (l && re.test(l)) return { icon, guessed: false };
   for (const [re, icon] of SHAPES) if (s && re.test(s)) return { icon, guessed: false };

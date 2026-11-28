@@ -1,3 +1,4 @@
+import { BRAND_GROUPS, BRAND_NAMES } from "../model/brandKeys";
 import type { IconKey } from "../model/types";
 
 /** Human names, used in the palette, the legend and the type selector. */
@@ -19,6 +20,7 @@ export const ICON_NAMES: Record<IconKey, string> = {
   archive: "Archive / backup", files: "File storage",
   apigw: "API gateway", auth: "Auth / login",
   http: "HTTP", rest: "REST API", websocket: "WebSocket", sse: "Server-sent events", webhook: "Webhook",
+  ...BRAND_NAMES,
 };
 
 /** Palette grouping. Every icon appears exactly once. */
@@ -33,4 +35,5 @@ export const PALETTE_GROUPS: { title: string; icons: IconKey[] }[] = [
   { title: "AI", icons: ["ai", "llm", "agent", "rag", "embed", "retriever", "prompt", "guard", "tools", "memory", "mcp"] },
   { title: "Cloud", icons: ["lambda", "container", "cluster", "network", "dns", "firewall", "identity", "key", "warehouse", "etl", "files", "archive", "alarm", "iot"] },
   { title: "Other", icons: ["card", "chart"] },
+  ...BRAND_GROUPS,
 ];

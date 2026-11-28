@@ -1,3 +1,4 @@
+import type { BrandKey } from "../model/brandKeys";
 import * as THREE from "three";
 import { iconSvg } from "../glyphs/flatIcons";
 import type { IconKey, TextSize } from "../model/types";
@@ -51,8 +52,8 @@ export class TextureFactory {
   }
 
   /** The flat 2D glyph, rasterised for the 2D view mode. Loads asynchronously and updates itself. */
-  icon(icon: IconKey): TexInfo {
-    const key = "icon:" + icon;
+  icon(icon: IconKey, also: BrandKey[] = []): TexInfo {
+    const key = "icon:" + [icon, ...also].join();
     const hit = this.cache.get(key);
     if (hit) return hit;
     const tex = new THREE.Texture();
@@ -60,7 +61,7 @@ export class TextureFactory {
     tex.anisotropy = 8;
     const img = new Image();
     img.onload = () => { tex.image = img; tex.needsUpdate = true; };
-    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(iconSvg(icon, this.theme.fg, 256));
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(iconSvg(icon, this.theme.fg, 256, also));
     const info = { tex, w: 52, h: 52 };
     this.cache.set(key, info);
     return info;

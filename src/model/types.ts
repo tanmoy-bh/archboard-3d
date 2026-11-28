@@ -1,5 +1,7 @@
-/** Glyph keys. These are the icon vocabulary of the "architecture board" style. */
-export const ICON_KEYS = [
+import { BRAND_KEYS, BrandKey, isBrandKey } from "./brandKeys";
+
+/** The drawn-for-this-app components. Tools with a real logo are listed in brandKeys.ts. */
+export const GENERIC_KEYS = [
   "svc", "redis", "db", "es", "vector", "queue", "cdn", "phone", "laptop", "person",
   "gateway", "blob", "card", "bell", "mail", "sms", "ai", "doc", "graph", "lock",
   "chart", "ring", "filter", "server", "apps", "box", "globe", "decision",
@@ -9,6 +11,11 @@ export const ICON_KEYS = [
   "lambda", "container", "cluster", "dns", "warehouse", "alarm", "key", "identity", "firewall", "network", "etl", "iot", "archive", "files",
   "apigw", "auth",
 ] as const;
+
+export type GenericKey = (typeof GENERIC_KEYS)[number];
+
+/** Glyph keys. These are the icon vocabulary of the "architecture board" style. */
+export const ICON_KEYS = [...GENERIC_KEYS, ...BRAND_KEYS] as const;
 
 export type IconKey = (typeof ICON_KEYS)[number];
 
@@ -23,6 +30,21 @@ export interface NodeData {
   gy: number;
   icon: IconKey;
   label: string;
+  /** More tool logos shown in the same box, when it names several tools. Only next to a tool logo. */
+  also?: BrandKey[];
+}
+
+export const ALSO_MAX = 5;
+
+/** The extra logos a box may keep: tool logos only, no repeats, and none next to a generic component. */
+export function cleanAlso(icon: IconKey, also: unknown): BrandKey[] {
+  if (!isBrandKey(icon) || !Array.isArray(also)) return [];
+  return [...new Set(also.filter(isBrandKey))].filter((k) => k !== icon).slice(0, ALSO_MAX);
+}
+
+/** Every icon a box shows, the main one first. */
+export function iconKeysOf(node: { icon: IconKey; also?: BrandKey[] }): IconKey[] {
+  return [node.icon, ...(node.also ?? [])];
 }
 
 export interface EdgeData {

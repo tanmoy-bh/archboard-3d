@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { Glyph3D, createGlyph, disposeGlyph } from "../glyphs/models";
-import type { NodeData } from "../model/types";
+import { NodeData, iconKeysOf } from "../model/types";
 import { HALF, METRICS, PXW, SLAB_H, SP, TILE, ViewMode } from "./constants";
 import type { Ctx } from "./textures";
 
@@ -127,17 +127,18 @@ export class NodeView {
   }
 
   private refresh(): void {
-    // The 3D model is rebuilt only when the component type changes.
-    if (this.glyphKey !== this.data.icon) {
-      this.glyphKey = this.data.icon;
+    // The 3D model is rebuilt only when what the box shows changes.
+    const shown = iconKeysOf(this.data).join();
+    if (this.glyphKey !== shown) {
+      this.glyphKey = shown;
       if (this.glyph) disposeGlyph(this.glyph);
-      this.glyph = createGlyph(this.data.icon);
+      this.glyph = createGlyph(this.data.icon, this.data.also);
       this.stand.add(this.glyph.group);
       if (this.ghostOpacity < 1) setOpacity(this.glyph.group, this.ghostOpacity);
     }
-    if (this.flatKey !== this.data.icon) {
-      this.flatKey = this.data.icon;
-      this.flat.material.map = this.ctx.tex.icon(this.data.icon).tex;
+    if (this.flatKey !== shown) {
+      this.flatKey = shown;
+      this.flat.material.map = this.ctx.tex.icon(this.data.icon, this.data.also).tex;
       this.flat.material.needsUpdate = true;
     }
     const lk = this.data.label;

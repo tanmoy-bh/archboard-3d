@@ -1,20 +1,16 @@
 import * as THREE from "three";
-import { ICON_KEYS, IconKey } from "../model/types";
+import { BRAND_KEYS, isBrandKey } from "../model/brandKeys";
+import { GENERIC_KEYS, IconKey } from "../model/types";
 import type { ViewMode } from "../scene/constants";
 import { iconSvg } from "./flatIcons";
+import { logoImage } from "./logoTexture";
 import { createGlyph, disposeGlyph } from "./models";
 
-let cache: Map<IconKey, string> | null = null;
 const SIZE = 128;
 
-/**
- * Small pictures of the 3D models for the palette and legend. Each one is a render of the real model
- * seen from the board's default camera angle, so what you pick is what you get. Rendered once, lazily.
- * Returns an empty map when WebGL is not available (the UI then falls back to text only).
- */
-export function glyphThumbnails(): Map<IconKey, string> {
-  if (cache) return cache;
-  cache = new Map();
+/** Render each model once, seen from the board's default camera angle. Empty when WebGL is not available. */
+function renderThumbnails(keys: readonly IconKey[]): Map<IconKey, string> {
+  const out = new Map<IconKey, string>();
   let renderer: THREE.WebGLRenderer | null = null;
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -33,23 +29,45 @@ export function glyphThumbnails(): Map<IconKey, string> {
     cam.position.set(d * Math.cos(e) * Math.sin(az), 0.55 + d * Math.sin(e), d * Math.cos(e) * Math.cos(az));
     cam.lookAt(0, 0.55, 0);
 
-    for (const key of ICON_KEYS) {
+    for (const key of keys) {
       const glyph = createGlyph(key);
       glyph.tick?.(0.7);
       glyph.group.rotation.y = az; // faces the camera, as it does on the board
       scene.add(glyph.group);
       renderer.render(scene, cam);
-      cache.set(key, renderer.domElement.toDataURL("image/png"));
+      out.set(key, renderer.domElement.toDataURL("image/png"));
       scene.remove(glyph.group);
       disposeGlyph(glyph);
     }
   } catch {
-    cache = new Map();
+    out.clear();
   } finally {
     renderer?.dispose();
     renderer?.forceContextLoss();
   }
+  return out;
+}
+
+let cache: Map<IconKey, string> | null = null;
+
+/**
+ * Small pictures of the 3D models for the palette and legend. Each one is a render of the real model, so what
+ * you pick is what you get. Rendered once, lazily. Tool logos load as images first: see loadToolThumbnails().
+ */
+export function glyphThumbnails(): Map<IconKey, string> {
+  if (!cache) cache = renderThumbnails(GENERIC_KEYS);
   return cache;
+}
+
+let tools: Promise<void> | null = null;
+
+/** Render the 3D pictures of the tool logos once their artwork has loaded. Until then the flat logo stands in. */
+export function loadToolThumbnails(): Promise<void> {
+  tools ??= Promise.all(BRAND_KEYS.map((k) => logoImage(k).ready)).then(() => {
+    const have = glyphThumbnails();
+    for (const [k, url] of renderThumbnails(BRAND_KEYS)) have.set(k, url);
+  });
+  return tools;
 }
 
 const flatCache = new Map<string, string>();
@@ -59,7 +77,10 @@ const flatCache = new Map<string, string>();
  * flat drawing in 2D mode. Undefined when a 3D render is not available (no WebGL).
  */
 export function glyphImage(icon: IconKey, mode: ViewMode, fg: string): string | undefined {
-  if (mode === "3d") return glyphThumbnails().get(icon);
+  if (mode === "3d") {
+    const render = glyphThumbnails().get(icon);
+    if (render || !isBrandKey(icon)) return render;
+  }
   const key = fg + icon;
   let url = flatCache.get(key);
   if (!url) {

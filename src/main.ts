@@ -1,3 +1,4 @@
+import { logosReady } from "./glyphs/logoTexture";
 import "./style.css";
 import { exampleDoc } from "./example";
 import { Controller } from "./interaction/controller";
@@ -174,8 +175,9 @@ function boot(): void {
       });
       input.click();
     },
-    exportPng() {
+    async exportPng() {
       try {
+        await logosReady(store.doc.nodes);
         download(`${slug(store.doc.title)}.png`, view.exportPng());
         toast("PNG exported.");
       } catch (e) {
@@ -192,6 +194,7 @@ function boot(): void {
       const block = (e: KeyboardEvent) => { e.stopImmediatePropagation(); e.preventDefault(); };
       window.addEventListener("keydown", block, true); // keep shortcuts from editing the board mid-export
       try {
+        await logosReady(store.doc.nodes);
         const blob = await view.exportGif({
           stillSeconds: 3, stillFps: 12, turnFps: 8, width: 1200,
           onProgress: (done, total) => { bar.value = Math.round((done / total) * 100); text.textContent = `Rendering frame ${done} of ${total}`; },

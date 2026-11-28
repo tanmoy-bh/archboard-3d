@@ -2,7 +2,10 @@
  * The flat (2D) glyph set of the "architecture board" style: one icon per component type, drawn in a
  * 48x48 box centred on (x, y). Used only by the 2D view mode; the 3D view uses models.ts instead.
  */
-import type { IconKey } from "../model/types";
+import { BRAND_KEYS, BrandKey, isBrandKey } from "../model/brandKeys";
+import type { GenericKey, IconKey } from "../model/types";
+import { logoCells } from "./logoGrid";
+import { flatLogo } from "./logoSvg";
 
 type IconFn = (x: number, y: number) => string;
 
@@ -28,7 +31,7 @@ function stack3(cx: number, cy: number, w: number, h: number, f: string[], s: st
 const dbCluster = (x: number, y: number, top: string, bottom: string, line: string) =>
   cyl(x - 22, y - 18, 18, 22, top, line) + cyl(x + 4, y - 18, 18, 22, top, line) + cyl(x - 9, y - 4, 18, 22, bottom, line);
 
-export const ICONS: Record<IconKey, IconFn> = {
+const GENERIC: Record<GenericKey, IconFn> = {
   svc: (x, y) => stack3(x, y, 30, 24, ["#4caf50", "#3b9442", "#2e7d32"], "#1b4d1f", 7, 6),
   redis: (x, y) => {
     const rhombus = (cy: number) => `M${x - 21} ${cy} L${x} ${cy - 9} L${x + 21} ${cy} L${x} ${cy + 9} z`;
@@ -252,11 +255,22 @@ export const ICONS: Record<IconKey, IconFn> = {
     `<path d="M${x - 8} ${y - 1} l6 6.5 l11 -13" fill="none" stroke="#f0fdf4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`,
 };
 
+export const ICONS: Record<IconKey, IconFn> = {
+  ...GENERIC,
+  ...(Object.fromEntries(BRAND_KEYS.map((k) => [k, (x: number, y: number) => flatLogo(k, x, y, 42)])) as Record<BrandKey, IconFn>),
+};
+
+/** The logos of a box that names several tools, each on its own small badge. */
+function logoGroup(keys: BrandKey[]): string {
+  const span = 50, gap = 1.6;
+  return logoCells(keys.length).map((c, i) => flatLogo(keys[i], c.x * span, c.y * span, c.size * span - gap)).join("");
+}
+
 /** Full standalone SVG markup for an icon, used for rasterising and for DOM previews. */
-export function iconSvg(icon: IconKey, color: string, px: number): string {
+export function iconSvg(icon: IconKey, color: string, px: number, also: BrandKey[] = []): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-26 -26 52 52" width="${px}" height="${px}" color="${color}">` +
-    ICONS[icon](0, 0) +
+    (also.length && isBrandKey(icon) ? logoGroup([icon, ...also]) : ICONS[icon](0, 0)) +
     `</svg>`
   );
 }

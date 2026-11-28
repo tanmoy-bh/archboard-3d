@@ -41,32 +41,32 @@ describe("labels", () => {
 
 describe("icon mapping", () => {
   const icon = (shape: string, label = "") => mapIcon(shape, label).icon;
-  it("maps cloud services to the closest component", () => {
-    expect(icon("mxgraph.aws4.sns")).toBe("bell");
-    expect(icon("mxgraph.aws4.simple_notification_service")).toBe("bell");
-    expect(icon("mxgraph.aws4.sqs")).toBe("queue");
+  it("gives AWS shapes their own icons, and maps other cloud services to the closest component", () => {
+    expect(icon("mxgraph.aws4.sns")).toBe("aws-sns");
+    expect(icon("mxgraph.aws4.simple_notification_service")).toBe("aws-sns");
+    expect(icon("mxgraph.aws4.sqs")).toBe("aws-sqs");
     expect(icon("mxgraph.gcp2.cloud_pubsub")).toBe("queue");
     expect(icon("mxgraph.azure.service_bus")).toBe("queue");
-    expect(icon("mxgraph.aws4.lambda_function")).toBe("lambda");
-    expect(icon("mxgraph.aws4.s3")).toBe("blob");
-    expect(icon("mxgraph.aws4.elasticache")).toBe("redis");
-    expect(icon("mxgraph.aws4.application_load_balancer")).toBe("gateway");
-    expect(icon("mxgraph.aws4.route_53")).toBe("dns");
-    expect(icon("mxgraph.aws4.waf")).toBe("firewall");
-    expect(icon("mxgraph.aws4.eks")).toBe("cluster");
-    expect(icon("mxgraph.aws4.iam")).toBe("identity");
-    expect(icon("mxgraph.aws4.kms")).toBe("key");
-    expect(icon("mxgraph.aws4.redshift")).toBe("warehouse");
-    expect(icon("mxgraph.aws4.glue")).toBe("etl");
-    expect(icon("mxgraph.aws4.cloudwatch")).toBe("alarm");
-    expect(icon("mxgraph.aws4.vpc")).toBe("network");
-    expect(icon("mxgraph.aws4.glacier")).toBe("archive");
+    expect(icon("mxgraph.aws4.lambda_function")).toBe("aws-lambda");
+    expect(icon("mxgraph.aws4.s3")).toBe("aws-s3");
+    expect(icon("mxgraph.aws4.elasticache")).toBe("aws-elasticache");
+    expect(icon("mxgraph.aws4.application_load_balancer")).toBe("aws-elb");
+    expect(icon("mxgraph.aws4.route_53")).toBe("aws-route53");
+    expect(icon("mxgraph.aws4.waf")).toBe("aws-waf");
+    expect(icon("mxgraph.aws4.eks")).toBe("aws-eks");
+    expect(icon("mxgraph.aws4.iam")).toBe("aws-iam");
+    expect(icon("mxgraph.aws4.kms")).toBe("aws-kms");
+    expect(icon("mxgraph.aws4.redshift")).toBe("aws-redshift");
+    expect(icon("mxgraph.aws4.glue")).toBe("aws-glue");
+    expect(icon("mxgraph.aws4.cloudwatch")).toBe("aws-cloudwatch");
+    expect(icon("mxgraph.aws4.vpc")).toBe("aws-vpc");
+    expect(icon("mxgraph.aws4.glacier")).toBe("aws-glacier");
     expect(icon("mxgraph.aws4.efs")).toBe("files");
     expect(icon("mxgraph.aws4.iot_core")).toBe("iot");
-    expect(icon("mxgraph.aws4.api_gateway")).toBe("apigw");
+    expect(icon("mxgraph.aws4.api_gateway")).toBe("aws-api-gateway");
     expect(icon("", "Authentication service")).toBe("auth");
-    expect(icon("mxgraph.aws4.cognito")).toBe("identity");
-    expect(icon("mxgraph.aws4.bedrock")).toBe("llm");
+    expect(icon("mxgraph.aws4.cognito")).toBe("aws-cognito");
+    expect(icon("mxgraph.aws4.bedrock")).toBe("aws-bedrock");
   });
   it("uses the label when the shape says nothing", () => {
     expect(icon("rounded", "Redis (Token Status)")).toBe("redis");
@@ -144,7 +144,7 @@ describe("draw.io import", () => {
     const { doc } = await importDrawio(xml);
     expect(doc.texts).toHaveLength(1);
     expect(doc.texts[0]).toMatchObject({ text: "A caption", size: "l" });
-    expect(doc.nodes.find((n) => n.icon === "queue")!.label).toBe("Jobs");
+    expect(doc.nodes.find((n) => n.icon === "aws-sqs")!.label).toBe("Jobs");
   });
 
   it("reverses an arrow that only has a start head, merges opposite arrows with equal labels, and drops duplicates", async () => {

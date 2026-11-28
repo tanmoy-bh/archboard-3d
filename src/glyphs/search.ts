@@ -42,6 +42,12 @@ export const ICON_ALIASES: Partial<Record<IconKey, string>> = {
   llm: "gpt claude language model chat",
   vector: "embeddings embedding pinecone pgvector",
   chart: "analytics dashboard metrics graph bi",
+  // tools with their own logo
+  slack: "chat channel", claude: "anthropic", gemini: "google model", openai: "gpt chatgpt model", codex: "openai coding agent",
+  opencode: "open code coding agent", antigravity: "anti gravity google coding agent", copilot: "co pilot coding agent", meta: "llama",
+  "mcp-logo": "mcp", atlassian: "rovo", onepassword: "1password one password secrets vault", postgresql: "postgres pgvector sql",
+  kubernetes: "k8s", "github-actions": "ci cd pipeline", "aws-open-search": "elasticsearch", "aws-elb": "alb nlb load balancer",
+  "aws-route53": "route 53 dns", "aws-msk": "kafka", microsoft: "365 entra", "redis-logo": "cache",
 };
 
 /** Lower case, letters and digits only, one space between words. */

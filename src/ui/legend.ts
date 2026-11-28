@@ -1,7 +1,8 @@
 import { ICON_NAMES } from "../glyphs/catalog";
-import { glyphImage } from "../glyphs/thumbs";
+import { glyphImage, loadToolThumbnails } from "../glyphs/thumbs";
+import { isBrandKey } from "../model/brandKeys";
 import type { Store } from "../model/store";
-import { ICON_KEYS } from "../model/types";
+import { ICON_KEYS, iconKeysOf } from "../model/types";
 import type { ViewMode } from "../scene/constants";
 import { h } from "./dom";
 
@@ -17,7 +18,8 @@ export class Legend {
   }
 
   update(mode: ViewMode, fg: string): void {
-    const used = ICON_KEYS.filter((k) => this.store.doc.nodes.some((n) => n.icon === k));
+    const shown = new Set(this.store.doc.nodes.flatMap(iconKeysOf));
+    const used = ICON_KEYS.filter((k) => shown.has(k));
     const hot = this.store.doc.edges.some((e) => e.hot);
     const dash = this.store.doc.edges.some((e) => e.dash);
     const steps = this.store.doc.edges.some((e) => e.step);
@@ -36,7 +38,9 @@ export class Legend {
     const list = h("ul", {});
     for (const k of used) {
       const src = glyphImage(k, mode, fg);
-      list.append(h("li", {}, src ? h("img", { src, width: 28, height: 28, alt: "" }) : h("i", { class: "thumb-missing" }), h("span", {}, ICON_NAMES[k])));
+      const img = src ? h("img", { src, width: 28, height: 28, alt: "" }) : null;
+      list.append(h("li", {}, img ?? h("i", { class: "thumb-missing" }), h("span", {}, ICON_NAMES[k])));
+      if (img && mode === "3d" && isBrandKey(k)) void loadToolThumbnails().then(() => img.setAttribute("src", glyphImage(k, mode, fg) ?? img.src));
     }
     if (hot) list.append(h("li", {}, h("i", { class: "swatch hot" }), h("span", {}, "Key path")));
     if (dash) list.append(h("li", {}, h("i", { class: "swatch dash" }), h("span", {}, "Async / reply")));

@@ -8,7 +8,9 @@
  */
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import type { IconKey } from "../model/types";
+import { BrandKey, isBrandKey } from "../model/brandKeys";
+import type { GenericKey, IconKey } from "../model/types";
+import { brandModel } from "./brandModels";
 
 export interface Glyph3D {
   group: THREE.Group;
@@ -106,7 +108,7 @@ const discStack = (g: THREE.Group, colors: string[], edge: string): void => {
 
 // ------------------------------------------------------------------- models
 
-const BUILD: Record<IconKey, () => Glyph3D> = {
+const BUILD: Record<GenericKey, () => Glyph3D> = {
   /** Service: three stacked green layers with status lights. */
   svc() {
     const g = new THREE.Group();
@@ -1040,8 +1042,8 @@ const BUILD: Record<IconKey, () => Glyph3D> = {
  * faces the viewer (thin models such as a phone or a card would otherwise go edge-on when the board
  * is rotated).
  */
-export function createGlyph(icon: IconKey): Glyph3D {
-  const built = BUILD[icon]();
+export function createGlyph(icon: IconKey, also: BrandKey[] = []): Glyph3D {
+  const built: Glyph3D = isBrandKey(icon) ? { group: brandModel([icon, ...also]) } : BUILD[icon]();
   const root = new THREE.Group();
   root.add(built.group);
   return { group: root, tick: built.tick };

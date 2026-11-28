@@ -1,4 +1,4 @@
-import { DocData, EdgeData, NOTES_MAX, NodeData, TEXT_MAX_LENGTH, TextData, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, ZoneData, genId, isHexColor, isBoardId, isIconKey, isTextSize, snap, snapNode } from "./types";
+import { DocData, EdgeData, NOTES_MAX, NodeData, TEXT_MAX_LENGTH, TextData, ZONE_COLORS, ZONE_LABEL_MAX, ZONE_MIN, ZoneData, cleanAlso, genId, isHexColor, isBoardId, isIconKey, isTextSize, snap, snapNode } from "./types";
 
 export function stringifyDoc(doc: DocData): string {
   return JSON.stringify(doc, null, 2);
@@ -30,13 +30,16 @@ export function parseDoc(text: string): DocData {
     let id = typeof n.id === "string" && n.id ? n.id : genId("n");
     while (seen.has(id)) id = genId("n");
     seen.add(id);
-    nodes.push({
+    const node: NodeData = {
       id,
       gx: snapNode(gx),
       gy: snapNode(gy),
       icon: isIconKey(n.icon) ? n.icon : "svc",
       label: typeof n.label === "string" ? n.label : "",
-    });
+    };
+    const also = cleanAlso(node.icon, n.also);
+    if (also.length) node.also = also;
+    nodes.push(node);
   }
 
   const edges: EdgeData[] = [];
